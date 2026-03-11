@@ -127,6 +127,6 @@ The project maintains a high coverage bar for the **Recovery Service** to ensure
 
 ## Author
 **Methas Pakpoompong**  
-[GitHub](https://github.com/MethasMP) | [LinkedIn](https://linkedin.com/in/methas-pakpoompong)
+[GitHub](https://github.com/MethasMP) | [LinkedIn](https://www.linkedin.com/in/methas-pakpoompong-36584023a/)
 
 *"Building resilient systems for a non-resilient world."*
