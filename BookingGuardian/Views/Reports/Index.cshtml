@@ -1,0 +1,255 @@
+@using System.Text.Json
+@model BookingGuardian.Models.ReportsPageViewModel
+@{
+    ViewData["Title"] = "BusOnlineTicket Analytics";
+    var dayLabelsJson = JsonSerializer.Serialize(Model.DayOfWeekLabels);
+    var dayCountsJson = JsonSerializer.Serialize(Model.DayOfWeekCounts);
+    var causeLabelsJson = JsonSerializer.Serialize(Model.TopCauseLabels);
+    var causeCountsJson = JsonSerializer.Serialize(Model.TopCauseCounts);
+}
+
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-end border-bottom border-secondary border-opacity-25 pb-3">
+        <div>
+            <h1 class="title-main">Growth Intelligence</h1>
+            <p class="subtitle-main">Strategic insights for BusOnlineTicket network growth</p>
+        </div>
+        <div class="text-end mb-1">
+            <form method="get" class="d-inline-flex align-items-center gap-3">
+                <select name="range" class="form-select form-select-sm bg-transparent border-0 text-white font-mono" style="width: auto; cursor: pointer; box-shadow: none;" onchange="this.form.submit()">
+                    <option value="thisMonth" selected="@(Model.SelectedRange == "thismonth" ? "selected" : null)" class="bg-dark">This Month</option>
+                    <option value="lastMonth" selected="@(Model.SelectedRange == "lastmonth" ? "selected" : null)" class="bg-dark">Last Month</option>
+                    <option value="last7Days" selected="@(Model.SelectedRange == "last7days" ? "selected" : null)" class="bg-dark">Last 7 Days</option>
+                </select>
+                <a class="btn btn-dark btn-sm rounded-pill px-4" href="/reports/download?month=@Model.DownloadMonth&format=csv">
+                    <i data-lucide="download" style="width: 14px; margin-right: 4px;"></i> CSV
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- The Core Metrics -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center">
+            <div class="metric-value mb-2">@Model.TotalAnomalies</div>
+            <div class="text-secondary small fw-700 tracking-wider">INCIDENTS</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center info-wrapper">
+            <div class="metric-value mb-2 text-primary">
+                <span class="currency-symbol">฿</span>@Model.TotalRevenueRecovered.ToString("N0")
+            </div>
+            <div class="text-secondary small fw-700 tracking-wider">RECOVERED</div>
+            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
+                ยอดเงินรวมที่กู้คืนได้ตามช่วงเวลาที่เลือก (Revenue rescued in selected range)
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center info-wrapper">
+            <div class="metric-value mb-2">
+                @Model.AvgResolutionMinutes.ToString("N1")<span class="metric-unit">min</span>
+            </div>
+            <div class="text-secondary small fw-700 tracking-wider">RESOLUTION TIME</div>
+            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
+                เวลาเฉลี่ยในการกู้คืนบุ๊คกิ้ง (Avg. time to recover journey)
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center">
+            <div class="metric-value mb-2 @(Model.MostDownEventKey == "-" ? "text-success" : "text-white")" style="font-size: @(Model.MostDownEventKey == "-" ? "2.2rem" : "1.1rem");">
+                @(Model.MostDownEventKey == "-" ? "STABLE" : Model.MostDownEventKey.ToUpper())
+                @if(Model.MostDownEventKey != "-" && Model.MostDownEventCount > 0)
+                {
+                    <span class="text-warning small font-mono opacity-75 ms-2">(@Model.MostDownEventCount)</span>
+                }
+            </div>
+            <div class="text-secondary small fw-700 tracking-wider mt-auto">HI-VOLATILITY NODE</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- Main Timeline -->
+    <div class="col-lg-8">
+        <div class="guardian-card h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 fw-600 mb-0">Chronological Distribution</h3>
+                <span class="badge bg-secondary-subtle">When</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="dayChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Causal Roots -->
+    <div class="col-lg-4">
+        <div class="guardian-card h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 fw-600 mb-0">Causal Roots</h3>
+                <span class="badge bg-secondary-subtle">Why</span>
+            </div>
+            <div class="chart-wrapper" style="height: 300px; padding: 10px;">
+                <canvas id="typeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="guardian-card h-100 p-0">
+             <div class="p-4 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                 <h3 class="h5 fw-600 mb-0">Performance Momentum</h3>
+             </div>
+             <div class="table-responsive">
+                 <table class="guardian-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Timeline</th>
+                            <th class="text-center">Volume</th>
+                            <th class="text-end pe-4">Success Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.ResolutionPerformance)
+                        {
+                            var rate = row.Total > 0 ? (row.Resolved * 100 / row.Total) : 0;
+                            <tr>
+                                <td class="ps-4 fw-600">@row.WeekLabel</td>
+                                <td class="text-center text-secondary">@row.Total</td>
+                                <td class="text-end pe-4">
+                                    @if(rate > 80) {
+                                        <span class="text-success fw-bold">@rate%</span>
+                                    } else {
+                                        <span>@rate%</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+             </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="guardian-card h-100 p-0">
+            <div class="p-4 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                <h3 class="h5 fw-600 mb-0">Nodes at Risk</h3>
+            </div>
+            <div class="p-4">
+                @foreach (var row in Model.TopRoutes)
+                {
+                    <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-25 @(row == Model.TopRoutes.Last() ? "border-0 pb-0" : "")">
+                        <div class="fw-600 text-white font-mono">@row.Route</div>
+                        <div class="text-end">
+                            <div class="text-primary fw-700">฿@row.TotalAmountAtRisk.ToString("N0")</div>
+                            <div class="small text-secondary font-mono">@row.AnomalyCount Incidents</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        const dayLabels = @Html.Raw(dayLabelsJson);
+        const dayCounts = @Html.Raw(dayCountsJson);
+        const causeLabels = @Html.Raw(causeLabelsJson);
+        const causeCounts = @Html.Raw(causeCountsJson);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            // Daily chart setup - minimalistic
+            const ctxDay = document.getElementById('dayChart').getContext('2d');
+            const grad = ctxDay.createLinearGradient(0, 0, 0, 300);
+            grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+            grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+            Chart.defaults.color = 'rgba(255,255,255,0.4)';
+            Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+
+            new Chart(ctxDay, {
+                type: 'line',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{
+                        data: dayCounts,
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#3b82f6',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        backgroundColor: grad,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            border: { display: false }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            border: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { cornerRadius: 8, padding: 12 } }
+                }
+            });
+
+            // Doughnut purely aesthetic
+            new Chart(document.getElementById('typeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: causeLabels,
+                    datasets: [{
+                        data: causeCounts,
+                        backgroundColor: [
+                            '#3b82f6', '#0ea5e9', '#6366f1', '#8b5cf6', '#14b8a6', '#64748b'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '85%',
+                    layout: {
+                        padding: {
+                            top: 20,
+                            bottom: 20,
+                            left: 10,
+                            right: 10
+                        }
+                    },
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom',
+                            labels: { usePointStyle: true, padding: 25, boxWidth: 8 }
+                        },
+                        tooltip: { cornerRadius: 8, padding: 12 }
+                    }
+                }
+            });
+        });
+    </script>
+}

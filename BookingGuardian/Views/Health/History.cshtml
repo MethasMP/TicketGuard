@@ -1,0 +1,262 @@
+@model BookingGuardian.Models.HealthHistoryViewModel
+@{
+    ViewData["Title"] = "BusOnlineTicket Telemetry";
+    TimeZoneInfo displayTimeZone;
+    try { displayTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok"); }
+    catch { displayTimeZone = TimeZoneInfo.Local; }
+}
+
+<style>
+    :root {
+        --glass-bg: rgba(255, 255, 255, 0.03);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --safety-red: #ff3b30;
+        --safety-orange: #ff9500;
+        --safety-green: #34c759;
+    }
+
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .safety-banner {
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(255, 59, 48, 0.1) 0%, rgba(255, 149, 0, 0.1) 100%);
+        border: 1px solid rgba(255, 59, 48, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        animation: subtle-glow 3s infinite alternate;
+    }
+
+    @@keyframes subtle-glow {
+        from { box-shadow: 0 0 10px rgba(255, 59, 48, 0.1); }
+        to { box-shadow: 0 0 30px rgba(255, 59, 48, 0.3); }
+    }
+
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .status-up { background: var(--safety-green); box-shadow: 0 0 10px var(--safety-green); }
+    .status-down { background: var(--safety-red); box-shadow: 0 0 10px var(--safety-red); }
+    .status-degraded { background: var(--safety-orange); box-shadow: 0 0 10px var(--safety-orange); }
+
+    .node-pill {
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--glass-border);
+        font-family: var(--bs-font-monospace);
+        font-size: 0.85rem;
+        color: #fff;
+    }
+
+    .telemetry-row {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--glass-border);
+        transition: background 0.2s ease;
+    }
+
+    .telemetry-row:last-child { border-bottom: none; }
+    .telemetry-row:hover { background: rgba(255, 255, 255, 0.02); }
+
+    .pulse-text {
+        animation: critical-pulse 1.5s infinite;
+    }
+
+    /* Premium Tooltip System */
+    .info-wrapper {
+        position: relative;
+        cursor: help;
+    }
+
+    .info-tooltip {
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        color: #fff;
+        padding: 0.8rem 1.2rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        width: 220px;
+        text-align: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 100;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        pointer-events: none;
+        line-height: 1.4;
+    }
+
+    .info-wrapper:hover .info-tooltip {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .info-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+    }
+
+    @@keyframes critical-pulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.05); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    .brand-accent {
+        background: linear-gradient(135deg, #fff 0%, #888 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-end mb-5 border-bottom border-secondary border-opacity-25 pb-3">
+        <div>
+            <h1 class="title-main">SYSTEM PULSE</h1>
+            <p class="subtitle-main">Monitoring connectivity across the BusOnlineTicket network</p>
+        </div>
+        <div class="glass-card p-1">
+            <div class="btn-group">
+                <a href="?hours=1" class="btn btn-sm px-4 rounded-pill @(Model.SelectedHours == 1 ? "btn-light text-dark fw-bold" : "btn-link text-secondary")">1H</a>
+                <a href="?hours=24" class="btn btn-sm px-4 rounded-pill @(Model.SelectedHours == 24 ? "btn-light text-dark fw-bold" : "btn-link text-secondary")">24H</a>
+                <a href="?hours=168" class="btn btn-sm px-4 rounded-pill @(Model.SelectedHours == 168 ? "btn-light text-dark fw-bold" : "btn-link text-secondary")">7D</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safety Mode Active Banner -->
+    @if (Model.IsSafetyModeActive)
+    {
+        <div class="safety-banner mb-5">
+            <div class="status-down" style="width: 24px; height: 24px;"></div>
+            <div style="flex: 1;">
+                <h4 class="m-0 text-white fw-700">SAFETY MODE ACTIVE</h4>
+                <p class="m-0 text-secondary small">Circuit Breaker engaged. Auto-Recovery paused to prevent data corruption due to @string.Join(", ", Model.AffectedEndpoints) instability.</p>
+            </div>
+            
+            <div class="d-flex gap-4 px-4 border-start border-end border-secondary border-opacity-25">
+                <div class="text-center info-wrapper">
+                    <div class="text-secondary mb-1 font-mono text-uppercase tracking-wider" style="font-size: 11px;">Pending Completion</div>
+                    <div class="h4 text-danger fw-700 m-0 pulse-text">@Model.StuckBookingCount</div>
+                    <div class="info-tooltip">
+                        รายการที่ชำระเงินสำเร็จแล้ว แต่ยังออกตั๋วไม่สำเร็จเนื่องจากระบบปลายทางล่ม (Stuck Bookings)
+                    </div>
+                </div>
+                <div class="text-center info-wrapper">
+                    <div class="text-secondary mb-1 font-mono text-uppercase tracking-wider" style="font-size: 11px;">Protected Value</div>
+                    <div class="h4 text-danger fw-700 m-0 pulse-text">฿@Model.TotalAmountAtRisk.ToString("N0")</div>
+                    <div class="info-tooltip">
+                        ยอดเงินรวมทั้งหมดที่ TicketGuard for BusOnlineTicket กำลังเฝ้าระวังและรอการกู้คืน (Amount held in Safety Mode)
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-end font-mono small text-secondary">
+                LEVEL: CRITICAL
+            </div>
+        </div>
+    }
+
+    <!-- Summary Nodes -->
+    <div class="row g-4 mb-5">
+        @foreach(var status in Model.LatestStatus)
+        {
+            <div class="col-md-4">
+                <div class="glass-card p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="text-secondary small font-mono text-uppercase">Node Status</div>
+                        <div class="status-dot @(status.Status == "UP" ? "status-up" : (status.Status == "DOWN" ? "status-down" : "status-degraded"))"></div>
+                    </div>
+                    <h3 class="h6 text-white fw-800 mb-1">@status.Name</h3>
+                    <div class="font-mono text-secondary mb-3 text-truncate" style="font-size: 11px;">@status.Url</div>
+                    <div class="d-flex gap-3">
+                        <div class="flex-fill">
+                            <div class="text-secondary mb-1" style="font-size: 11px;">Latency</div>
+                            <div class="text-white font-mono small">@(status.ResponseMs?.ToString() ?? "---")ms</div>
+                        </div>
+                        <div class="flex-fill border-start border-secondary border-opacity-25 ps-3">
+                            <div class="text-secondary mb-1" style="font-size: 11px;">HTTP</div>
+                            <div class="text-white font-mono small">@(status.HttpCode?.ToString() ?? "ERR")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Telemetry Feed -->
+    <div class="glass-card overflow-hidden">
+        <div class="p-4 border-bottom border-light border-opacity-10 d-flex justify-content-between align-items-center">
+            <h5 class="h6 m-0 text-white fw-800 tracking-wider text-uppercase">Telemetry History Feed</h5>
+            <div class="text-secondary small font-mono" id="syncStatus">CONNECTED</div>
+        </div>
+        
+        <div id="feedContainer">
+            @if (Model.History.Any())
+            {
+                @foreach (var health in Model.History)
+                {
+                    var checkedAtUtc = DateTime.SpecifyKind(health.CheckedAt, DateTimeKind.Utc);
+                    var checkedAtDisplay = TimeZoneInfo.ConvertTimeFromUtc(checkedAtUtc, displayTimeZone);
+                    
+                    <div class="telemetry-row d-flex align-items-center">
+                        <div class="status-dot @(health.Status == "UP" ? "status-up" : (health.Status == "DOWN" ? "status-down" : "status-degraded"))"></div>
+                        <div class="fw-500 text-white" style="width: 200px;">@health.Name</div>
+                        <div class="text-secondary font-mono small flex-grow-1 d-none d-md-block">@health.Url</div>
+                        <div class="text-center font-mono @(health.Status == "UP" ? "text-success" : "text-danger")" style="width: 80px;">@health.Status</div>
+                        <div class="text-center font-mono text-white" style="width: 80px;">@(health.ResponseMs?.ToString() ?? "---")ms</div>
+                        <div class="text-end font-mono text-secondary small" style="width: 150px;">@checkedAtDisplay.ToString("MMM dd, HH:mm:ss")</div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="p-5 text-center text-secondary font-mono">NO RECORDS IN THIS WINDOW</div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Auto-refresh logic
+            setTimeout(() => {
+                location.reload();
+            }, 60000); // 60s for health history
+
+            const syncEl = document.getElementById('syncStatus');
+            setInterval(() => {
+                syncEl.innerText = syncEl.innerText === 'CONNECTED' ? 'RECEIVING' : 'CONNECTED';
+            }, 2000);
+        });
+    </script>
+}

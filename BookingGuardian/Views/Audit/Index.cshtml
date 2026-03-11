@@ -1,0 +1,450 @@
+@model List<BookingGuardian.Models.AuditLogViewModel>
+@{
+    ViewData["Title"] = "TicketGuard Audit Logs";
+    var total = (int)(ViewBag.Total ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var action = (string)(ViewBag.Action ?? "");
+    var q = (string)(ViewBag.Query ?? "");
+    var totalPages = Math.Max(1, (int)Math.Ceiling((double)total / pageSize));
+    var exportUrl = $"/audit/export?action={System.Net.WebUtility.UrlEncode(action)}&q={System.Net.WebUtility.UrlEncode(q)}";
+    var displayTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+}
+
+<div class="audit-container py-4">
+    <div class="mb-5 px-2 px-md-0">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-end border-bottom border-white border-opacity-10 pb-4 gap-4">
+            <div>
+                <h1 class="title-main text-white">TRANSPARENCY <span class="text-opacity-50">LOG</span></h1>
+                <p class="subtitle-main text-secondary">Immutable record of every TicketGuard intervention</p>
+            </div>
+            <div class="text-end d-flex flex-column align-items-end gap-2">
+                <div class="badge bg-white bg-opacity-10 font-mono fw-400 p-2 px-3 rounded-pill text-secondary border border-white border-opacity-10">
+                    <span class="text-white fw-700">@total</span> RECORDS LOGGED
+                </div>
+                <a class="btn-premium py-2 px-4 d-flex align-items-center gap-2" href="@exportUrl">
+                    <i data-lucide="download" style="width: 14px;"></i> EXPORT DATASET
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form id="auditFilterForm" method="get" class="mb-5 search-protocol d-flex flex-column gap-3 p-4 rounded-4">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-3">
+                <div class="field-label text-secondary font-mono mb-2">Filter Action</div>
+                <select id="actionFilter" name="action" class="form-select-premium w-100">
+                    <option value="" selected="@(string.IsNullOrEmpty(action) ? "selected" : null)">ALL ACTIONS</option>
+                    <option value="RECOVER" selected="@(action == "RECOVER" ? "selected" : null)">RECOVER</option>
+                    <option value="IGNORE" selected="@(action == "IGNORE" ? "selected" : null)">IGNORE</option>
+                </select>
+            </div>
+            <div class="col-md-6 border-start-md border-white border-opacity-10 px-md-4">
+                <div class="field-label text-secondary font-mono mb-2">Search Parameters</div>
+                <div class="input-group-premium d-flex align-items-center px-3 py-1">
+                    <i data-lucide="search" style="width: 18px;" class="text-secondary me-2"></i>
+                    <input id="searchInput" name="q" value="@q" class="form-control bg-transparent border-0 text-white w-100 shadow-none" 
+                           placeholder="Search Reference (BK-XXX), Name, Operator..." autocomplete="off" />
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="field-label text-secondary font-mono mb-2">Pagination Size</div>
+                <div class="d-flex align-items-center justify-content-end">
+                    <select id="pageSizeFilter" name="pageSize" class="form-select-premium">
+                        <option value="10" selected="@(pageSize == 10 ? "selected" : null)">10 ROWS</option>
+                        <option value="20" selected="@(pageSize == 20 ? "selected" : null)">20 ROWS</option>
+                        <option value="50" selected="@(pageSize == 50 ? "selected" : null)">50 ROWS</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div id="logContainer" class="d-flex flex-column gap-3">
+        @if (!Model.Any())
+        {
+            <div class="empty-state py-5 text-center text-secondary font-mono rounded-4 border border-dashed border-white border-opacity-10">
+                <i data-lucide="shield-alert" class="mb-3 opacity-25" style="width: 48px; height: 48px;"></i>
+                <div class="opacity-50 tracking-widest uppercase">Zero records found in this vector.</div>
+            </div>
+        }
+        else
+        {
+            @foreach (var log in Model)
+            {
+                var actionClass = log.Action switch
+                {
+                    "RECOVER" => "action-success",
+                    "IGNORE" => "action-warning",
+                    _ => "action-muted"
+                };
+                
+                var createdAtUtc = DateTime.SpecifyKind(log.CreatedAt, DateTimeKind.Utc);
+                var createdAtDisplay = TimeZoneInfo.ConvertTimeFromUtc(createdAtUtc, displayTimeZone);
+                var logId = $"log-{log.Id}";
+
+                <div class="audit-row" onclick="toggleDetails('@logId')">
+                    <div class="audit-row-main d-flex align-items-center p-4">
+                        <div class="timestamp-col font-mono pe-4 info-wrapper" style="min-width: 140px; border-right: 1px solid rgba(255,255,255,0.08);">
+                            <div class="text-white fw-900 h4 mb-0" style="letter-spacing: -1px;">@createdAtDisplay.ToString("HH:mm:ss")</div>
+                            <div class="text-secondary small uppercase tracking-widest opacity-75">@createdAtDisplay.ToString("MMM dd")</div>
+                        </div>
+
+                        <div class="action-col ps-4" style="min-width: 150px;">
+                            <span class="action-badge @actionClass">@log.Action</span>
+                        </div>
+
+                        <div class="entity-col flex-grow-1 px-4">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="text-white-50 font-mono small uppercase tracking-tighter" style="font-size: 0.7rem;">@log.EntityType</span>
+                                <span class="text-white fw-900 h5 mb-0 tracking-tight" style="color: #fff !important;">@(log.ReferenceNo ?? $"ID {log.EntityId}")</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 audit-meta-line">
+                                <span class="text-white text-opacity-50 text-truncate note-preview" style="max-width: 450px;">
+                                    @(string.IsNullOrEmpty(log.Note) ? "System initiated action." : log.Note)
+                                </span>
+                                @if (!string.IsNullOrEmpty(log.CustomerName)) {
+                                    <span class="text-white text-opacity-25 d-none d-lg-inline">•</span>
+                                    <span class="text-white d-none d-lg-inline customer-name">@log.CustomerName</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="meta-col text-end d-none d-md-block" style="min-width: 180px;">
+                            <div class="small text-white-50 font-mono uppercase tracking-widest mb-1 opacity-50" style="font-size: 0.6rem;">Operator</div>
+                            <div class="text-white fw-900 d-flex align-items-center justify-content-end gap-2" style="font-size: 0.9rem;">
+                                <i data-lucide="shield" style="width: 14px; color: var(--color-success); opacity: 0.8;"></i> @log.PerformedBy
+                            </div>
+                        </div>
+                        
+                        <div class="chevron-col ps-4">
+                            <i data-lucide="chevron-down" id="chevron-@logId" class="text-white opacity-20 transition-transform" style="width: 18px;"></i>
+                        </div>
+                    </div>
+
+                    <div id="details-@logId" class="audit-row-details border-top border-white border-opacity-10 bg-black bg-opacity-20 d-none">
+                        <div class="p-4 grid-details">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <div class="detail-block">
+                                        <div class="label">IP ORIGIN</div>
+                                        <div class="value font-mono">@(log.IpAddress ?? "Unknown Loopback")</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="detail-block">
+                                        <div class="label">IDENTIFIER (USER AGENT)</div>
+                                        <div class="value small font-mono opacity-75">@(log.UserAgent ?? "Legacy Client - No User Agent")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="pagination-portal mt-5 d-flex justify-content-center align-items-center gap-4">
+        <a class="nav-btn @(page <= 1 ? "disabled" : "")" href="/audit?action=@action&q=@q&page=@(page-1)&pageSize=@pageSize">
+            <i data-lucide="arrow-left" style="width: 18px;"></i> Prev
+        </a>
+        <div class="page-indicator font-mono fw-900 tracking-widest text-secondary h6 mb-0">
+            <span class="text-white">@(page)</span> <span class="opacity-25">/</span> @totalPages
+        </div>
+        <a class="nav-btn @(page >= totalPages ? "disabled" : "")" href="/audit?action=@action&q=@q&page=@(page+1)&pageSize=@pageSize">
+            Next <i data-lucide="arrow-right" style="width: 18px;"></i>
+        </a>
+    </div>
+</div>
+
+<style>
+    :root {
+        --color-success: #10B981;
+        --color-warning: #F59E0B;
+        --color-muted: #6B7280;
+        --btn-grad: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    }
+
+    .audit-container { 
+        max-width: 1200px; 
+        margin: 0 auto; 
+        color: #fff;
+        background: radial-gradient(circle at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 50%);
+    }
+
+    .field-label {
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        font-weight: 600;
+    }
+
+    /* Premium Button & Search */
+    .btn-premium {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 100px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    }
+    .btn-premium:hover { 
+        background: rgba(255, 255, 255, 0.1); 
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #fff;
+        transform: translateY(-2px); 
+        box-shadow: 0 15px 30px -10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .search-protocol { 
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+        backdrop-filter: blur(40px);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+    }
+    .form-select-premium, .input-group-premium {
+        outline: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+        border-radius: 12px !important;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        font-size: 1.05rem;
+    }
+    .form-select-premium {
+        padding: 0.72rem 1rem;
+        cursor: pointer;
+    }
+    .form-select-premium:focus, .input-group-premium:focus-within { 
+        border-color: rgba(255, 255, 255, 0.3) !important; 
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+    
+    .form-control-premium {
+        outline: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+        border-radius: 12px !important;
+        font-weight: 600;
+        padding: 0.6rem 1rem;
+        transition: all 0.2s ease;
+    }
+    .form-control-premium:focus { border-color: rgba(255, 255, 255, 0.3) !important; }
+
+    .audit-meta-line {
+        font-size: 1rem;
+    }
+    .note-preview {
+        font-size: 0.95rem;
+    }
+    .customer-name {
+        font-size: 1.05rem;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+    }
+    .timestamp-col .h4 {
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em !important;
+    }
+
+    /* Audit Rows */
+    .audit-row {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: rowEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+    }
+    .audit-row:hover {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-4px) scale(1.002);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .action-badge {
+        font-size: 0.65rem;
+        font-weight: 900;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 6px 14px;
+        border-radius: 8px;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+    .action-success { 
+        background: rgba(16, 185, 129, 0.08); 
+        color: #34D399; 
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    }
+    .action-warning { 
+        background: rgba(245, 158, 11, 0.08); 
+        color: #FBBF24; 
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+    .action-muted { 
+        background: rgba(255, 255, 255, 0.03); 
+        color: #9CA3AF; 
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+    }
+
+    /* Detail Blocks */
+    .detail-block .label { font-size: 0.6rem; font-weight: 800; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; margin-bottom: 4px; }
+    .detail-block .value { word-break: break-all; }
+
+    /* Pagination */
+    .nav-btn {
+        text-decoration: none; color: #fff; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+        padding: 10px 24px; border-radius: 100px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        transition: all 0.2s ease;
+    }
+    .nav-btn:hover:not(.disabled) { background: #fff; color: #000; transform: scale(1.05); }
+    .nav-btn.disabled { opacity: 0.2; pointer-events: none; }
+
+    @@keyframes rowEntrance {
+        from { opacity: 0; transform: translateY(20px); blur: 10px; }
+        to { opacity: 1; transform: translateY(0); blur: 0; }
+    }
+    
+    .transition-transform { transition: transform 0.3s ease; }
+    .rotate-180 { transform: rotate(180deg); }
+    
+    @@media (min-width: 768px) {
+        .border-start-md { border-left: 1px solid rgba(255, 255, 255, 0.1) !important; }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        let lastServerHtml = '';
+        let form;
+        let searchInput;
+        let actionFilter;
+        let pageSizeFilter;
+        let debounceTimer;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const container = document.getElementById('logContainer');
+            if (container) lastServerHtml = container.innerHTML;
+
+            form = document.getElementById('auditFilterForm');
+            searchInput = document.getElementById('searchInput');
+            actionFilter = document.getElementById('actionFilter');
+            pageSizeFilter = document.getElementById('pageSizeFilter');
+
+            // Keep filtering fully client-side (like Cmd+F feel)
+            form?.addEventListener('submit', (e) => e.preventDefault());
+            searchInput?.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(applyLocalFilters, 120);
+            });
+            actionFilter?.addEventListener('change', applyLocalFilters);
+            pageSizeFilter?.addEventListener('change', applyLocalFilters);
+
+            applyLocalFilters();
+            
+            // Silent refresh every 30s
+            setInterval(silentRefresh, 30000);
+        });
+
+        function applyLocalFilters() {
+            const container = document.getElementById('logContainer');
+            if (!container) return;
+
+            const rows = Array.from(container.querySelectorAll('.audit-row'));
+            if (!rows.length) return;
+
+            const query = (searchInput?.value || '').trim().toLowerCase();
+            const action = (actionFilter?.value || '').trim().toUpperCase();
+            const pageLimit = parseInt(pageSizeFilter?.value || '20', 10);
+
+            // Core filter algorithm: array.filter over visible rows data
+            const matchedRows = rows.filter((row) => {
+                const rowText = (row.textContent || '').toLowerCase();
+                const rowAction = (row.querySelector('.action-badge')?.textContent || '').trim().toUpperCase();
+                const queryMatch = !query || rowText.includes(query);
+                const actionMatch = !action || rowAction === action;
+                return queryMatch && actionMatch;
+            });
+
+            rows.forEach((row) => { row.style.display = 'none'; });
+            matchedRows.slice(0, pageLimit).forEach((row) => { row.style.display = ''; });
+
+            let localEmpty = document.getElementById('localFilterEmpty');
+            if (!localEmpty) {
+                localEmpty = document.createElement('div');
+                localEmpty.id = 'localFilterEmpty';
+                localEmpty.className = 'empty-state py-4 text-center text-secondary font-mono rounded-4 border border-dashed border-white border-opacity-10 mt-3 d-none';
+                localEmpty.textContent = 'No matching records on this page.';
+                container.appendChild(localEmpty);
+            }
+            localEmpty.classList.toggle('d-none', matchedRows.length > 0);
+        }
+
+        async function silentRefresh() {
+            try {
+                // Fetch the same URL containing current filters and pagination
+                const response = await fetch(window.location.href);
+                if (!response.ok) return;
+                
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newContainer = doc.getElementById('logContainer');
+                if (newContainer) {
+                    const newServerHtml = newContainer.innerHTML;
+                    // Only update DOM if the server HTML actually changed
+                    if (lastServerHtml !== newServerHtml) {
+                        document.getElementById('logContainer').innerHTML = newServerHtml;
+                        lastServerHtml = newServerHtml;
+                        lucide.createIcons();
+                        applyLocalFilters();
+                    }
+                }
+
+                // Update total records badge
+                const newDocBadge = doc.querySelector('.badge span.fw-700');
+                const currBadge = document.querySelector('.badge span.fw-700');
+                if (newDocBadge && currBadge && newDocBadge.innerText !== currBadge.innerText) {
+                    currBadge.innerText = newDocBadge.innerText;
+                }
+            } catch (err) {
+                console.error('Audit auto-refresh failed:', err);
+            }
+        }
+
+        function toggleDetails(id) {
+            const el = document.getElementById('details-' + id);
+            const chevron = document.getElementById('chevron-' + id);
+            
+            if (el.classList.contains('d-none')) {
+                el.classList.remove('d-none');
+                chevron.classList.add('rotate-180');
+            } else {
+                el.classList.add('d-none');
+                chevron.classList.remove('rotate-180');
+            }
+        }
+    </script>
+}
