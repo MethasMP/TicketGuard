@@ -1,132 +1,206 @@
-# 🛡️ TicketGuard: Revenue Recovery Engine
+# TicketGuard
 
-[![Build Status](https://img.shields.io/badge/Build-Passing-success?style=for-the-badge&logo=.net)](https://github.com/MethasMP/ticketguard)
-[![Security](https://img.shields.io/badge/Security-Hardened-blue?style=for-the-badge)](https://github.com/MethasMP/ticketguard)
-[![Monthly Reports](https://img.shields.io/badge/Reports-PDF%20Enabled-orange?style=for-the-badge)](https://github.com/MethasMP/ticketguard)
+TicketGuard is an ASP.NET Core 8 application for detecting stuck bookings, linking them to endpoint outages, recovering eligible bookings, and generating monthly operational reports.
 
-> **"ได้รับเงินแล้ว แต่ไม่ออกตั๋ว — เราหาเจอ แก้เอง และแจ้งลูกค้าทันที"**
+## Key features
 
-TicketGuard is a mission-critical support automation engine designed to solve the **"Stuck Booking"** problem. It automatically detects and recovers distributed system failures where a customer is charged, but the booking fails to confirm.
+- Detects anomalies where payment succeeded but booking is still pending
+- Runs background auto-recovery when enabled and when tracked endpoints are healthy
+- Tracks endpoint health with current status and history views
+- Writes audit logs for recover, ignore, and SMS notification outcomes
+- Serves dashboard, reports, audit, health, and login pages
+- Exposes CSV export in the current reports UI
+- Generates PDF reports in backend using QuestPDF
 
-![TicketGuard Dashboard Preview](assets/dashboard_preview.png)
+## Quick start
 
----
+### Prerequisites
 
-## 📈 The Engineering Challenge: Asynchronous Fragility
+- Docker Desktop
+- .NET 8 SDK
 
-Online booking systems rely on **External Payment Providers**. The gap between **Payment Success** and **Booking Confirmation** creates a "distributed state" risk that cannot be wrapped in a single database transaction.
+### Start infrastructure
 
-### Why "Stuck Bookings" are inevitable (The Thai Context)
-
-| Payment Method | Why it fails |
-|---------------|--------------|
-| **PromptPay** | Webhook from Bank/ธปท. delayed or lost during peak traffic. |
-| **Credit Card** | Timeouts between Card Issuer → Gateway → App callback. |
-| **I-Banking** | User closes browser before the redirect/callback is completed. |
-
----
-
-## 🏗️ Core Capabilities
-
-### 1. 🔍 Autonomous Detection (`AnomalyDetectionJob`)
-- Scans `payment_status = SUCCESS` + `booking_status = PENDING` every 5 minutes.
-- **Circuit Breaker Logic**: Automatically halts recovery if critical endpoints (Payment Gateway, SMS) are DOWN to prevent state corruption.
-
-### 2. ⚡ Zero-Touch Recovery (Pulse Mode)
-- **Staggered Execution**: Implements a 1-second pulse delay between recoveries to avoid database spikes.
-- **Atomic Operations**: Every fix is wrapped in an **EF Core Execution Strategy** (SQL Transaction) — either it works completely, or it rolls back.
-
-### 3. 📱 Proactive Communication (`SmsNotificationService`)
-- Once recovered, the system triggers an automated notification (Thai/English).
-- *"ระบบ TicketGuard ได้ยืนยันตั๋วให้ท่านเรียบร้อยแล้ว..."*
-
-### 4. 📊 Monthly PDF Intelligence (`ReportService`)
-- Generates professional PDF reports using **QuestPDF**.
-- Metrics: **Revenue Recovered**, **Mean Time to Resolve (MTTR)**, and **Endpoint Uptime**.
-
-### 5. 🛡️ Dashboard Terminology
-- **🔴 AWAITING RECOVERY**: System has intercepted a stuck booking. The recovery engine is currently managing the retry sequence.
-- **🟢 SECURED**: The booking has been successfully restored, ticket issued, and customer notified.
-- **⚪ DISCARDED**: Manual oversight confirmed the anomaly was a false positive (e.g., manual refund already issued).
-
----
-
-## 🧠 Architecture Overview
-
-### Request Lifecycle
-1. **Detection**: `BackgroundService` identifies anomalies.
-2. **Analysis**: Link anomaly to a specific endpoint outage (e.g., "Omise Webhook Outage").
-3. **Execution**: Service Layer applies the fix with a secure audit trail.
-4. **Verification**: SMS confirmation and PDF logging.
-
-### Key Components
-- **Identity**: JWT-based auth (derived from token, never from body).
-- **Security**: PII Data Masking in audit logs + CSP Hardening.
-- **Reporting**: High-fidelity PDF generation (not just HTML-to-PDF).
-
----
-
-## 🚀 Quick Start
-
-**Prerequisites**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) · [.NET 8 SDK](https://dotnet.microsoft.com/download)
-
-### 1. Stand up Infrastructure
 ```bash
 docker-compose up -d
 ```
 
-### 2. Start the Application
+This starts:
+
+- MySQL on `localhost:3306`
+- The app container on `http://localhost:5080`
+
+### Run the app locally
+
 ```bash
-cd BookingGuardian && dotnet run
+cd BookingGuardian
+dotnet run
 ```
 
-### 3. Default Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@monitor.dev` | `Monitor1234!` |
+If environment variables are not set, the app falls back to values in [`BookingGuardian/appsettings.json`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/appsettings.json).
 
----
+### Seeded login
 
-## 📋 Project Structure
+From [`database/seed.sql`](/Users/maemp/Desktop/booking-guardian/database/seed.sql):
 
-```bash
+- Email: `admin@monitor.dev`
+- Password: `Monitor1234!`
+
+## What the current UI exposes
+
+- `/` dashboard
+- `/reports`
+- `/health/history`
+- `/audit`
+- `/Account/Login`
+
+Important:
+
+- The current reports page exposes a CSV download button only, in [`BookingGuardian/Views/Reports/Index.cshtml`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/Views/Reports/Index.cshtml).
+- PDF generation exists in backend services and the reports controller, but it is not currently linked from the reports page.
+
+## Report exports
+
+- UI button: `/reports/download?month=YYYY-MM&format=csv`
+- Backend endpoint supports:
+  - CSV
+  - PDF
+
+Current monthly PDF generation is implemented through `MonthlyPdfReportService` and includes:
+
+- total anomalies detected
+- resolved
+- ignored
+- unresolved
+- revenue recovered
+- mean time to resolve
+- endpoint uptime
+- top causes
+- recommendations
+
+## How the system works
+
+### Background jobs
+
+- `AnomalyDetectionJob`
+  - Detects stuck bookings
+  - Links anomalies to nearby `DOWN` endpoint health records when possible
+  - Auto-recovers open anomalies with a 1 second stagger between attempts
+  - Halts recovery for the run if any latest tracked endpoint status is `DOWN`
+
+- `EndpointHealthCheckJob`
+  - Polls configured endpoints
+  - Stores `UP`, `DEGRADED`, or `DOWN` snapshots
+  - Suppresses redundant unchanged snapshots to reduce data growth
+
+- `MonthlyReportEmailJob`
+  - Generates last month's PDF report
+  - Sends it on day 1 after 08:00 UTC when auto-send, SMTP host, and recipients are configured
+
+### Core services
+
+- `BookingService`
+  - recover single anomaly
+  - ignore anomaly
+  - bulk recover anomalies atomically
+  - write audit logs
+  - attempt SMS notification after successful recovery
+
+- `ReportService`
+  - builds report page view models
+  - builds monthly report data
+  - exports monthly CSV
+
+- `MonthlyPdfReportService`
+  - generates monthly PDF reports with QuestPDF
+
+- `SmsNotificationService`
+  - sends recovery notifications through an external HTTP endpoint when enabled
+
+- `PaymentGatewayService`
+  - currently simulated
+  - does not call a real provider API yet
+
+## Tech stack
+
+- .NET 8
+- ASP.NET Core MVC + Web API
+- Entity Framework Core
+- MySQL 8
+- Serilog
+- QuestPDF
+- xUnit + Moq
+- Docker Compose
+
+## Project structure
+
+```text
 booking-guardian/
-├── BookingGuardian/
-│   ├── Controllers/          # JWT Protected Endpoints
-│   ├── Services/             # Business Logic (Recovery, PDF, SMS)
-│   ├── BackgroundServices/   # Anomaly Detection & Health Monitoring
-│   ├── Data/                 # EF Core DBContext & Migrations
-│   └── Views/                # Razor Dashboard & Reporting UI
-├── BookingGuardian.Tests/    # Unit Tests (xUnit + Moq)
-└── docker-compose.yml        # MySQL 8.0 Environment
+├── BookingGuardian/          # ASP.NET Core app
+├── BookingGuardian.Tests/    # Unit tests
+├── database/seed.sql         # MySQL schema + seed data
+├── docker-compose.yml        # Local MySQL + app stack
+└── Dockerfile                # App container build
 ```
 
----
+## Configuration
 
-## 🧪 Testing & Reliability
+Relevant settings in [`BookingGuardian/appsettings.json`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/appsettings.json):
+
+- `ConnectionStrings:DefaultConnection`
+- `JwtSettings:Secret`
+- `AnomalyDetection:IntervalMinutes`
+- `AnomalyDetection:ThresholdMinutes`
+- `AnomalyDetection:AutoRecoveryEnabled`
+- `HealthCheck:IntervalMinutes`
+- `HealthCheck:Endpoints`
+- `SmsService:Url`
+- `SmsService:ApiKey`
+- `SmsService:Enabled`
+- `MonthlyReport:AutoSend`
+- `MonthlyReport:Recipients`
+- `MonthlyReport:SmtpHost`
+- `PaymentGateway:ApiKey`
+- `PaymentGateway:Enabled`
+
+Primary runtime environment variables:
+
+- `DB_CONNECTION_STRING`
+- `JWT_SECRET`
+
+## Security and auth
+
+- Login issues a JWT and stores it in the `JWT_TOKEN` cookie
+- Authorization policies:
+  - `AdminOnly`
+  - `SupportOrAdmin`
+- Anti-forgery validation is applied to mutating endpoints used by the UI
+- Response headers include:
+  - CSP
+  - `X-Content-Type-Options`
+  - `X-Frame-Options`
+  - `Referrer-Policy`
+
+## Tests
+
+Run:
+
 ```bash
-cd BookingGuardian.Tests && dotnet test
+dotnet test BookingGuardian.sln
 ```
-The project maintains a high coverage bar for the **Recovery Service** to ensure no edge cases (like double-charging or double-issuing) occur during auto-fixes.
 
----
+Current test coverage includes:
 
-## 🗺️ Roadmap
-- [ ] **Direct API Reconciliation**: Integration with Stripe/2C2P APIs to verify settlement before recovery.
-- [ ] **Predictive Outage Detection**: Statistical analysis to signal provider issues *before* ping-checks fail.
-- [ ] **Slack/Teams Ops Relay**: Real-time alerts for DevOps during major Songkran/Peak-season outages.
+- anomaly detection behavior
+- duplicate anomaly prevention
+- endpoint outage linking
+- single recovery flow
+- bulk recovery transaction behavior
+- audit log creation
 
----
+## Limitations and implementation notes
 
-## 🔐 Environment Variables
-- `DB_CONNECTION_STRING`: MySQL connection.
-- `JWT_SECRET`: Minimum 32 characters key.
-- `DETECTION_INTERVAL_MINUTES`: Frequency of scans (Default: 5).
-
----
-
-## Author
-**Methas Pakpoompong**  
-[GitHub](https://github.com/MethasMP) | [LinkedIn](https://www.linkedin.com/in/methas-pakpoompong-36584023a/)
-
-*"Building resilient systems for a non-resilient world."*
+- `PaymentGatewayService` is simulated and not integrated with a real provider API
+- `SmsNotificationService` only sends when `SmsService:Enabled` is true and a target URL is configured
+- `MonthlyReport:AutoSend` is `false` by default
+- There is no `.env.example`; configuration currently lives in environment variables or `appsettings.json`
