@@ -1,16 +1,40 @@
 # TicketGuard
 
-TicketGuard is an ASP.NET Core 8 application for detecting stuck bookings, linking them to endpoint outages, recovering eligible bookings, and generating monthly operational reports.
+> Payment succeeded. Booking did not.
+> TicketGuard finds the gap, links it to system health, and recovers what can be recovered.
 
-## Key features
+TicketGuard is an ASP.NET Core 8 application for one operational problem: bookings that are paid but still left pending. It watches for those failures, records what happened, tracks upstream endpoint health, and gives operators a clean control surface for recovery and reporting.
 
-- Detects anomalies where payment succeeded but booking is still pending
-- Runs background auto-recovery when enabled and when tracked endpoints are healthy
-- Tracks endpoint health with current status and history views
-- Writes audit logs for recover, ignore, and SMS notification outcomes
-- Serves dashboard, reports, audit, health, and login pages
+## What makes it useful
+
+- Detects stuck bookings where payment is `SUCCESS` but booking remains `PENDING`
+- Runs automatic recovery when recovery is enabled and tracked endpoints are healthy
+- Correlates booking issues with endpoint outages when evidence exists
+- Records a full audit trail for recover, ignore, and SMS notification outcomes
+- Ships a dashboard, audit view, health history, and reports area
 - Exposes CSV export in the current reports UI
-- Generates PDF reports in backend using QuestPDF
+- Generates PDF reports in backend with QuestPDF
+
+## The shape of the product
+
+### What the current UI exposes
+
+- `/` dashboard
+- `/reports`
+- `/health/history`
+- `/audit`
+- `/Account/Login`
+
+### What the reports UI actually lets you download
+
+- CSV only, from [`BookingGuardian/Views/Reports/Index.cshtml`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/Views/Reports/Index.cshtml)
+
+### What the backend supports beyond that
+
+- `/reports/download?month=YYYY-MM&format=csv`
+- `/reports/download?month=YYYY-MM&format=pdf`
+
+PDF generation is implemented in backend services and the reports controller, but it is not currently linked from the reports page.
 
 ## Quick start
 
@@ -28,7 +52,7 @@ docker-compose up -d
 This starts:
 
 - MySQL on `localhost:3306`
-- The app container on `http://localhost:5080`
+- the app container on `http://localhost:5080`
 
 ### Run the app locally
 
@@ -37,7 +61,7 @@ cd BookingGuardian
 dotnet run
 ```
 
-If environment variables are not set, the app falls back to values in [`BookingGuardian/appsettings.json`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/appsettings.json).
+If runtime environment variables are not set, the app falls back to values in [`BookingGuardian/appsettings.json`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/appsettings.json).
 
 ### Seeded login
 
@@ -46,27 +70,40 @@ From [`database/seed.sql`](/Users/maemp/Desktop/booking-guardian/database/seed.s
 - Email: `admin@monitor.dev`
 - Password: `Monitor1234!`
 
-## What the current UI exposes
+## How it works
 
-- `/` dashboard
-- `/reports`
-- `/health/history`
-- `/audit`
-- `/Account/Login`
+### 1. Detection
 
-Important:
+`AnomalyDetectionJob` scans for bookings where:
 
-- The current reports page exposes a CSV download button only, in [`BookingGuardian/Views/Reports/Index.cshtml`](/Users/maemp/Desktop/booking-guardian/BookingGuardian/Views/Reports/Index.cshtml).
-- PDF generation exists in backend services and the reports controller, but it is not currently linked from the reports page.
+- payment is successful
+- booking is still pending
+- the booking is older than the configured threshold
 
-## Report exports
+It creates an anomaly record and tries to attach nearby endpoint outage context when a matching `DOWN` event exists.
 
-- UI button: `/reports/download?month=YYYY-MM&format=csv`
-- Backend endpoint supports:
-  - CSV
-  - PDF
+### 2. Safety gate
 
-Current monthly PDF generation is implemented through `MonthlyPdfReportService` and includes:
+Before auto-recovery runs, the job checks the latest tracked endpoint states.
+
+If any latest endpoint status is `DOWN`, recovery is inhibited for that run.
+
+### 3. Recovery
+
+When recovery is allowed, `BookingService`:
+
+- confirms the booking
+- marks the anomaly resolved
+- writes audit logs
+- attempts post-recovery SMS notification
+
+Bulk recovery is also supported and handled atomically.
+
+### 4. Reporting
+
+`ReportService` builds report data for the UI and CSV exports.
+
+`MonthlyPdfReportService` builds PDF reports with QuestPDF, including:
 
 - total anomalies detected
 - resolved
@@ -78,48 +115,39 @@ Current monthly PDF generation is implemented through `MonthlyPdfReportService` 
 - top causes
 - recommendations
 
-## How the system works
+## Main runtime pieces
 
 ### Background jobs
 
 - `AnomalyDetectionJob`
-  - Detects stuck bookings
-  - Links anomalies to nearby `DOWN` endpoint health records when possible
-  - Auto-recovers open anomalies with a 1 second stagger between attempts
-  - Halts recovery for the run if any latest tracked endpoint status is `DOWN`
+  - detects stuck bookings
+  - links anomalies to relevant outage evidence
+  - auto-recovers open anomalies with a 1 second stagger
+  - halts recovery for the run when tracked endpoints are down
 
 - `EndpointHealthCheckJob`
-  - Polls configured endpoints
-  - Stores `UP`, `DEGRADED`, or `DOWN` snapshots
-  - Suppresses redundant unchanged snapshots to reduce data growth
+  - polls configured endpoints
+  - stores `UP`, `DEGRADED`, or `DOWN`
+  - suppresses redundant unchanged snapshots
 
 - `MonthlyReportEmailJob`
-  - Generates last month's PDF report
-  - Sends it on day 1 after 08:00 UTC when auto-send, SMTP host, and recipients are configured
+  - generates last month's PDF report
+  - sends it on day 1 after 08:00 UTC when configured
 
 ### Core services
 
 - `BookingService`
-  - recover single anomaly
-  - ignore anomaly
-  - bulk recover anomalies atomically
-  - write audit logs
-  - attempt SMS notification after successful recovery
-
 - `ReportService`
-  - builds report page view models
-  - builds monthly report data
-  - exports monthly CSV
-
 - `MonthlyPdfReportService`
-  - generates monthly PDF reports with QuestPDF
-
 - `SmsNotificationService`
-  - sends recovery notifications through an external HTTP endpoint when enabled
-
 - `PaymentGatewayService`
-  - currently simulated
-  - does not call a real provider API yet
+
+## Important implementation notes
+
+- `PaymentGatewayService` is currently simulated and does not call a real provider API yet
+- `SmsNotificationService` only sends when `SmsService:Enabled` is true and a target URL is configured
+- `MonthlyReport:AutoSend` is `false` by default
+- There is no `.env.example`; configuration currently lives in environment variables or `appsettings.json`
 
 ## Tech stack
 
@@ -170,16 +198,12 @@ Primary runtime environment variables:
 
 ## Security and auth
 
-- Login issues a JWT and stores it in the `JWT_TOKEN` cookie
+- Login issues a JWT stored in the `JWT_TOKEN` cookie
 - Authorization policies:
   - `AdminOnly`
   - `SupportOrAdmin`
 - Anti-forgery validation is applied to mutating endpoints used by the UI
-- Response headers include:
-  - CSP
-  - `X-Content-Type-Options`
-  - `X-Frame-Options`
-  - `Referrer-Policy`
+- Response headers include CSP, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`
 
 ## Tests
 
@@ -189,7 +213,7 @@ Run:
 dotnet test BookingGuardian.sln
 ```
 
-Current test coverage includes:
+Current tests cover:
 
 - anomaly detection behavior
 - duplicate anomaly prevention
@@ -197,10 +221,3 @@ Current test coverage includes:
 - single recovery flow
 - bulk recovery transaction behavior
 - audit log creation
-
-## Limitations and implementation notes
-
-- `PaymentGatewayService` is simulated and not integrated with a real provider API
-- `SmsNotificationService` only sends when `SmsService:Enabled` is true and a target URL is configured
-- `MonthlyReport:AutoSend` is `false` by default
-- There is no `.env.example`; configuration currently lives in environment variables or `appsettings.json`
