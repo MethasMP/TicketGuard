@@ -34,18 +34,17 @@ This project demonstrates the transition from a "Coder" to an "Operator" who und
 
 ---
 
-## 🧠 The Problem Statement
+| Area | Strategic Value | Status |
+|---|---|---|
+| 🔍 **Detection** | **Dual-Speed Engine**: Fast feedback (Seconds) in Test vs. Scalable stability (Minutes) in Live. | ✅ |
+| 🔗 **Correlation** | **Context Injection**: Links anomalies to specific `DOWN` events for instant root-cause analysis. | ✅ |
+| 🛡️ **Safety Gate** | **Dynamic Guard**: Blocks recovery only for active dependencies defined in current configuration. | ✅ |
+| 🧪 **Chaos Tool** | **System Simulator**: Built-in engine to inject outages and verify recovery logic under fire. | ✅ |
+| 📋 **Audit Trail** | **Immutable Ledger**: Captures operator, IP, and intent for every system mutation. | ✅ |
+| 📊 **Analytics** | **Operational Pulse**: Tracks MTTR and "Revenue at Risk" by node/route. | ✅ |
+| 🔐 **Security** | **Hardened Core**: JWT via Cookies, strict CSP, Anti-Forgery, and Secure Headers. | ✅ |
 
-In any booking system, the riskiest failures are not the loud ones.
-
-They are the **silent ones**:
-
-```
-Payment marked SUCCESS  →  Booking stays PENDING  →  Customer expects a ticket that never arrives
-```
-
-The gap between a confirmed payment and an issued ticket is where real money and customer trust are lost.
-TicketGuard is built specifically around that gap — to detect it, explain it, and help operators close it safely.
+---
 
 ## 🎬 System in Action (Walking Through a Crisis)
 
@@ -59,15 +58,44 @@ Below is a recorded walkthrough showing the **Chaos-to-Recovery** flow:
 
 ---
 
-| Area | Strategic Value | Status |
-|---|---|---|
-| 🔍 **Detection** | **Dual-Speed Engine**: Fast feedback (Seconds) in Test vs. Scalable stability (Minutes) in Live. | ✅ |
-| 🔗 **Correlation** | **Context Injection**: Links anomalies to specific `DOWN` events for instant root-cause analysis. | ✅ |
-| 🛡️ **Safety Gate** | **Dynamic Guard**: Blocks recovery only for active dependencies defined in current configuration. | ✅ |
-| 🧪 **Chaos Tool** | **System Simulator**: Built-in engine to inject outages and verify recovery logic under fire. | ✅ |
-| 📋 **Audit Trail** | **Immutable Ledger**: Captures operator, IP, and intent for every system mutation. | ✅ |
-| 📊 **Analytics** | **Operational Pulse**: Tracks MTTR and "Revenue at Risk" by node/route. | ✅ |
-| 🔐 **Security** | **Hardened Core**: JWT via Cookies, strict CSP, Anti-Forgery, and Secure Headers. | ✅ |
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Docker Desktop (for MySQL)
+- .NET 8 SDK
+
+### 1. Start Infrastructure
+
+```bash
+docker-compose up -d
+```
+
+This starts:
+
+- **MySQL 8** on `localhost:3306`
+- **App container** on `http://localhost:5080`
+
+> [!TIP]
+> On the first run, MySQL may take 15–30 seconds to initialize and run the `seed.sql` script. The app container is configured to `restart: always` and will automatically reconnect once the database is ready.
+
+### 2. Run the App Locally (without Docker for the app)
+
+```bash
+cd BookingGuardian
+dotnet run
+```
+
+If runtime environment variables are not set, the app reads from `BookingGuardian/appsettings.json`.
+
+### 3. Log In
+
+| Field | Value |
+|---|---|
+| Email | `admin@monitor.dev` |
+| Password | `Monitor1234!` |
+
+(Seeded from `database/seed.sql`)
 
 ---
 
@@ -93,9 +121,7 @@ flowchart TD
     E --> K["📊 Reports & Audit views updated"]
 ```
 
----
-
-## 🔗 Correlation Logic — The Smart Part
+### 🔗 Correlation Logic — The Smart Part
 
 **This is the most operationally significant feature.**
 
@@ -127,7 +153,70 @@ This means correlation drives both forensic context **and** real-time operationa
 
 ---
 
-## 🗃️ Data Model
+## 📸 Full Module Tour
+
+### 1. Operations Command Center (Dashboard)
+The primary cockpit for real-time monitoring. Highlights "Revenue at Risk" and active system health.
+![Dashboard](assets/dashboard.png)
+
+### 2. Forensic Analytics & Revenue Insights
+Tracking the financial impact of silent failures and component reliability trends.
+![Analytics](assets/analytics.png)
+
+### 3.📋 Immutable Audit Trail
+A complete, non-repudiable record of every system-led and simulated intervention.
+![Audit Log](assets/audit_logs.png)
+
+### 4. System Health Telemetry
+Live dependency monitoring with integrated Circuit Breaker logic signals.
+![Health Status](assets/health_status.png)
+
+### 5. Simulator Lab (Chaos Tooling)
+The engine used to inject outages and verify system resilience under fire.
+![Simulator](assets/simulator.png)
+
+---
+
+## �️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | .NET 8 |
+| Framework | ASP.NET Core MVC + Web API |
+| ORM | Entity Framework Core |
+| Database | MySQL 8 |
+| Logging | Serilog |
+| PDF Generation | QuestPDF |
+| Testing | xUnit + Moq + EF InMemory |
+| Containerisation | Docker Compose |
+
+---
+
+## 🗂️ Project Structure
+
+```text
+booking-guardian/
+├── BookingGuardian/               # ASP.NET Core app
+│   ├── BackgroundServices/        # AnomalyDetectionJob, EndpointHealthCheckJob, MonthlyReportEmailJob
+│   ├── Controllers/               # AnomalyController, ReportsController, AuditController, HealthController
+│   ├── Services/                  # BookingService, ReportService, SmsNotificationService, etc.
+│   ├── Models/                    # Booking, Anomaly, EndpointHealth, AuditLog, AnomalyResponse
+│   ├── Data/                      # BookingDbContext (EF Core)
+│   ├── Views/                     # Razor MVC views (Dashboard, Reports, Audit, Health)
+│   ├── wwwroot/                   # Static assets, CSS, JS
+│   ├── Program.cs                 # App composition root, middleware, DI registration
+│   └── appsettings.json           # Runtime configuration
+├── BookingGuardian.Tests/         # Unit tests (xUnit + Moq + EF InMemory)
+│   ├── AnomalyDetectionTests.cs   # Detection, deduplication, outage correlation
+│   └── BookingServiceTests.cs     # Recovery, ignore, bulk recovery, audit log, rollback
+├── database/seed.sql              # MySQL schema + seed data
+├── docker-compose.yml             # Local MySQL + app stack
+└── Dockerfile                     # App container build
+```
+
+---
+
+## �🗃️ Data Model
 
 ```mermaid
 erDiagram
@@ -304,123 +393,6 @@ Serilog's `WriteTo.Console()` is configured in `Program.cs`. Switching to JSON o
 
 ---
 
-## 🚀 Full Module Tour
-
-### 1. Operations Command Center (Dashboard)
-The primary cockpit for real-time monitoring. Highlights "Revenue at Risk" and active system health.
-![Dashboard](assets/dashboard.png)
-
-### 2. Forensic Analytics & Revenue Insights
-Tracking the financial impact of silent failures and component reliability trends.
-![Analytics](assets/analytics.png)
-
-### 3.📋 Immutable Audit Trail
-A complete, non-repudiable record of every system-led and simulated intervention.
-![Audit Log](assets/audit_logs.png)
-
-### 4. System Health Telemetry
-Live dependency monitoring with integrated Circuit Breaker logic signals.
-![Health Status](assets/health_status.png)
-
-### 5. Simulator Lab (Chaos Tooling)
-The engine used to inject outages and verify system resilience under fire.
-![Simulator](assets/simulator.png)
-
----
-
-## 🗂️ Project Structure
-
-```text
-booking-guardian/
-├── BookingGuardian/               # ASP.NET Core app
-│   ├── BackgroundServices/        # AnomalyDetectionJob, EndpointHealthCheckJob, MonthlyReportEmailJob
-│   ├── Controllers/               # AnomalyController, ReportsController, AuditController, HealthController
-│   ├── Services/                  # BookingService, ReportService, SmsNotificationService, etc.
-│   ├── Models/                    # Booking, Anomaly, EndpointHealth, AuditLog, AnomalyResponse
-│   ├── Data/                      # BookingDbContext (EF Core)
-│   ├── Views/                     # Razor MVC views (Dashboard, Reports, Audit, Health)
-│   ├── wwwroot/                   # Static assets, CSS, JS
-│   ├── Program.cs                 # App composition root, middleware, DI registration
-│   └── appsettings.json           # Runtime configuration
-├── BookingGuardian.Tests/         # Unit tests (xUnit + Moq + EF InMemory)
-│   ├── AnomalyDetectionTests.cs   # Detection, deduplication, outage correlation
-│   └── BookingServiceTests.cs     # Recovery, ignore, bulk recovery, audit log, rollback
-├── database/seed.sql              # MySQL schema + seed data
-├── docker-compose.yml             # Local MySQL + app stack
-└── Dockerfile                     # App container build
-```
-
----
-
-## 🧪 Testing
-
-### Run Tests
-
-```bash
-dotnet test BookingGuardian.sln
-```
-
-### Test Coverage by Domain
-
-| Area | What Is Tested |
-|---|---|
-| **Detection** | Flags stuck bookings correctly; ignores already-confirmed bookings |
-| **Deduplication** | Does not create a second anomaly when one already exists |
-| **Outage Correlation** | Links anomaly to `EndpointHealth` record when endpoint was `DOWN` at payment time |
-| **Single Recovery** | Success path, invalid payment status, already-resolved conflict (409), short note (422) |
-| **Audit Logging** | Verify operator email and IP are written to `AuditLogs` on every recovery |
-| **Bulk Recovery — Happy Path** | All N bookings confirmed, all N audit logs written, correct `AffectedCount` |
-| **Bulk Recovery — Rollback** | Any invalid booking in the batch: zero confirmations, zero audit logs (full atomic rollback) |
-
-### Test Architecture
-
-Tests use **EF Core InMemory** provider for speed and isolation. Each test class gets a fresh `Guid`-named database, preventing state leakage between tests.
-
-External dependencies (`ISmsNotificationService`, `IPaymentGatewayService`, `IBookingService`) are mocked with **Moq**. The SMS mock is configured to return `Attempted = false, Success = true` by default, keeping recovery tests clean without real HTTP calls.
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Docker Desktop (for MySQL)
-- .NET 8 SDK
-
-### 1. Start Infrastructure
-
-```bash
-docker-compose up -d
-```
-
-This starts:
-
-- **MySQL 8** on `localhost:3306`
-- **App container** on `http://localhost:5080`
-
-> [!TIP]
-> On the first run, MySQL may take 15–30 seconds to initialize and run the `seed.sql` script. The app container is configured to `restart: always` and will automatically reconnect once the database is ready.
-
-### 2. Run the App Locally (without Docker for the app)
-
-```bash
-cd BookingGuardian
-dotnet run
-```
-
-If runtime environment variables are not set, the app reads from `BookingGuardian/appsettings.json`.
-
-### 3. Log In
-
-| Field | Value |
-|---|---|
-| Email | `admin@monitor.dev` |
-| Password | `Monitor1234!` |
-
-(Seeded from `database/seed.sql`)
-
----
-
 ## ⚙️ Configuration Reference
 
 ### Environment Variables
@@ -477,21 +449,6 @@ If runtime environment variables are not set, the app reads from `BookingGuardia
 
 ---
 
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Runtime | .NET 8 |
-| Framework | ASP.NET Core MVC + Web API |
-| ORM | Entity Framework Core |
-| Database | MySQL 8 |
-| Logging | Serilog |
-| PDF Generation | QuestPDF |
-| Testing | xUnit + Moq + EF InMemory |
-| Containerisation | Docker Compose |
-
----
-
 ## ⚠️ Implementation Boundaries
 
 - `PaymentGatewayService` is **simulated** — it does not call a real payment provider API
@@ -501,57 +458,31 @@ If runtime environment variables are not set, the app reads from `BookingGuardia
 
 ---
 
-## 🔭 What I'd Build Next
+## 🧪 Testing
 
-These are the next steps I would prioritise if this project moved toward production use, ranked by operational impact:
+### Run Tests
 
-### High Impact
+```bash
+dotnet test BookingGuardian.sln
+```
 
-| Item | Why |
+### Test Coverage by Domain
+
+| Area | What Is Tested |
 |---|---|
-| **Expose PDF download in the reports UI** | The backend is implemented; it just needs a button and a `?format=pdf` query param wired to it |
-| **Add a `.env.example`** | Every engineer who clones this repo has to read `appsettings.json` to know what env vars are needed — a template fixes this in 5 minutes |
-| **Idempotency key on recovery actions** | Double-click on "Recover" can currently fire two requests. A per-anomaly idempotency check at the API level prevents phantom double-recoveries |
-| **Real payment gateway integration** | `PaymentGatewayService` is the riskiest simulated boundary — in production, recovery should re-verify payment status with the actual provider before confirming |
+| **Detection** | Flags stuck bookings correctly; ignores already-confirmed bookings |
+| **Deduplication** | Does not create a second anomaly when one already exists |
+| **Outage Correlation** | Links anomaly to `EndpointHealth` record when endpoint was `DOWN` at payment time |
+| **Single Recovery** | Success path, invalid payment status, already-resolved conflict (409), short note (422) |
+| **Audit Logging** | Verify operator email and IP are written to `AuditLogs` on every recovery |
+| **Bulk Recovery — Happy Path** | All N bookings confirmed, all N audit logs written, correct `AffectedCount` |
+| **Bulk Recovery — Rollback** | Any invalid booking in the batch: zero confirmations, zero audit logs (full atomic rollback) |
 
-### Medium Impact
+### Test Architecture
 
-| Item | Why |
-|---|---|
-| **Serilog JSON sink (Seq / Datadog)** | Structured logs exist; they are just going to console. Adding `WriteTo.Seq()` or `WriteTo.Datadog()` unlocks search, alerting, and dashboards without code changes in business logic |
-| **Pagination on audit and dashboard views** | High-volume environments will accumulate thousands of anomalies. EF queries are currently unbounded |
-| **Alerting on sustained anomaly spike** | If 20+ bookings go stuck within 10 minutes, something systemic is wrong. A threshold-based alert would catch this before a human notices on the dashboard |
-| **Integration tests against real MySQL** | EF InMemory works well for unit tests but does not validate index performance, constraint enforcement, or connection pool behaviour against the actual engine |
+Tests use **EF Core InMemory** provider for speed and isolation. Each test class gets a fresh `Guid`-named database, preventing state leakage between tests.
 
----
-
-## 🧠 Strategic Architecture Decisions (ADR)
-
-### ADR 001: Dual-Speed Execution Engine
-- **Context**: In production (LIVE), high-frequency scanning puts unnecessary load on the DB. In development (TEST), waiting 10 minutes to verify a fix is unacceptable.
-- **Decision**: Implemented `ISystemModeService` to toggle global state.
-- **Impact**: TEST Mode uses **Seconds** for instant validation; LIVE Mode uses **Minutes** for resource efficiency.
-
-### ADR 002: Configuration-Bound Safety Gate
-- **Context**: Decommissioned or old health check records in the database could permanently "trip" the circuit breaker, stopping all auto-recovery.
-- **Decision**: Modified `AnomalyDetectionJob` to filter health signals against the *active* `appsettings.json` list.
-- **Impact**: System ignores "ghost" outages and only reacts to currently tracked infrastructure.
-
-### ADR 003: Deterministic Simulation
-- **Context**: You cannot wait for a real outage to test an SRE tool. 
-- **Decision**: Developed `SystemSimulatorController` to manually flip endpoint states and "plant" anomalies.
-- **Impact**: Enables repeatable Chaos Testing and "War Room" drills for support staff.
-
----
-
-## 🧪 Simulation & Chaos Testing
-
-TicketGuard includes a built-in **Chaos Engine** (accessible via the Simulator Dashboard).
-
-1. **Inject Outage**: Force the "Payment Gateway" to return 503.
-2. **Plant Anomaly**: Create a synthetic booking that is "Stuck" (Paid but Pending).
-3. **Verify Inhibition**: Watch the `AnomalyDetectionJob` log a warning and block auto-recovery.
-4. **Restore & Recover**: Bring the gateway back `UP` and observe the system automatically rescue the booking within the next cycle.
+External dependencies (`ISmsNotificationService`, `IPaymentGatewayService`, `IBookingService`) are mocked with **Moq**. The SMS mock is configured to return `Attempted = false, Success = true` by default, keeping recovery tests clean without real HTTP calls.
 
 ---
 
