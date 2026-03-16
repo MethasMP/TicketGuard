@@ -304,7 +304,7 @@ Serilog's `WriteTo.Console()` is configured in `Program.cs`. Switching to JSON o
 
 ---
 
-## �️ Full Module Tour
+## 🚀 Full Module Tour
 
 ### 1. Operations Command Center (Dashboard)
 The primary cockpit for real-time monitoring. Highlights "Revenue at Risk" and active system health.
@@ -555,9 +555,7 @@ TicketGuard includes a built-in **Chaos Engine** (accessible via the Simulator D
 
 ---
 
----
-
-## � What I'd Build Next
+## 🔭 What I'd Build Next
 
 These are the next steps I would prioritise if this project moved toward production use, ranked by operational impact:
 
