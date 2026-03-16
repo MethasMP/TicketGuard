@@ -143,7 +143,7 @@ namespace BookingGuardian.Services
                 .ToList();
 
             model.ResolutionPerformance = anomalies
-                .GroupBy(a => GetWeekStartUtc(a.DetectedAt))
+                .GroupBy(a => a.DetectedAt.Date)
                 .OrderByDescending(g => g.Key)
                 .Select(g => new ResolutionPerformanceRow
                 {
@@ -207,7 +207,16 @@ namespace BookingGuardian.Services
                 .ToList();
 
             report.TopCauses = anomalies
-                .GroupBy(a => a.EndpointHealthId != null ? a.EndpointHealth?.Name ?? "Linked Outage" : "Platform Delay / Other")
+                .Select(a => new
+                {
+                    amount = a.Booking?.Amount,
+                    paymentAt = a.Booking?.PaymentAt,
+                    endpointHealthId = a.EndpointHealthId,
+                    cause = a.EndpointHealth != null
+                        ? $"Insight: {a.EndpointHealth.Name} outage correlated with this transaction."
+                        : "Insight: Booking creation timeout / Platform latency detected."
+                })
+                .GroupBy(a => a.cause)
                 .Select(g => new CauseRankRow { Cause = g.Key, Count = g.Count() })
                 .OrderByDescending(x => x.Count)
                 .Take(3)

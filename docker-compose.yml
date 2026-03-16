@@ -7,6 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: booking_guardian
+      MYSQL_USER: dbeaver
+      MYSQL_PASSWORD: dbeaver123
     volumes:
       - db_data:/var/lib/mysql
       - ./database/seed.sql:/docker-entrypoint-initdb.d/seed.sql
@@ -17,8 +19,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5080:8080"
+    restart: always
     environment:
-      DB_CONNECTION_STRING: "server=db;database=booking_guardian;user=dbeaver;password=dbeaver123"
+      DB_CONNECTION_STRING: "server=db;database=booking_guardian;user=dbeaver;password=dbeaver123;AllowUserVariables=True;AllowPublicKeyRetrieval=True;"
+      # Override Serilog MySQL Sink connection string
+      Serilog__WriteTo__1__Args__connectionString: "server=db;database=booking_guardian;user=dbeaver;password=dbeaver123;AllowUserVariables=True;AllowPublicKeyRetrieval=True;"
       JWT_SECRET: "change-me-in-production-minimum-32-chars-long-and-secure"
       ASPNETCORE_ENVIRONMENT: Development
     depends_on:

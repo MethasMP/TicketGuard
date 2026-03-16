@@ -1,6 +1,6 @@
 @model BookingGuardian.Models.HealthHistoryViewModel
 @{
-    ViewData["Title"] = "BusOnlineTicket Telemetry";
+    ViewData["Title"] = "System Health";
     TimeZoneInfo displayTimeZone;
     try { displayTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok"); }
     catch { displayTimeZone = TimeZoneInfo.Local; }
@@ -140,8 +140,12 @@
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-end mb-5 border-bottom border-secondary border-opacity-25 pb-3">
         <div>
-            <h1 class="title-main">SYSTEM PULSE</h1>
-            <p class="subtitle-main">Monitoring connectivity across the BusOnlineTicket network</p>
+            <h1 class="title-main">SYSTEM HEALTH</h1>
+            <p class="subtitle-main d-flex align-items-center gap-2">
+                <span class="badge bg-success-subtle text-success live-only" style="font-size: 10px; letter-spacing: 0.1em;">LIVE MODE</span>
+                <span class="badge bg-warning-subtle text-warning test-only" style="font-size: 10px; letter-spacing: 0.1em;">TEST MODE</span>
+                <span>Endpoint monitoring and connectivity status</span>
+            </p>
         </div>
         <div class="glass-card p-1">
             <div class="btn-group">
@@ -174,7 +178,7 @@
                     <div class="text-secondary mb-1 font-mono text-uppercase tracking-wider" style="font-size: 11px;">Protected Value</div>
                     <div class="h4 text-danger fw-700 m-0 pulse-text">฿@Model.TotalAmountAtRisk.ToString("N0")</div>
                     <div class="info-tooltip">
-                        ยอดเงินรวมทั้งหมดที่ TicketGuard for BusOnlineTicket กำลังเฝ้าระวังและรอการกู้คืน (Amount held in Safety Mode)
+                        ยอดเงินรวมทั้งหมดที่ TicketGuard กำลังเฝ้าระวังและรอการกู้คืน (Amount held in Safety Mode)
                     </div>
                 </div>
             </div>
@@ -192,7 +196,7 @@
             <div class="col-md-4">
                 <div class="glass-card p-4">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="text-secondary small font-mono text-uppercase">Node Status</div>
+                        <div class="text-secondary small font-mono text-uppercase">Component Status</div>
                         <div class="status-dot @(status.Status == "UP" ? "status-up" : (status.Status == "DOWN" ? "status-down" : "status-degraded"))"></div>
                     </div>
                     <h3 class="h6 text-white fw-800 mb-1">@status.Name</h3>

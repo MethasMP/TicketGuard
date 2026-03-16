@@ -36,7 +36,7 @@ namespace BookingGuardian.Controllers
         public async Task<IActionResult> GetAnomalies(
             [FromQuery] string? status = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
+            [FromQuery] int pageSize = 10,
             [FromQuery] bool todayOnly = false,
             [FromQuery] int? outageEndpointHealthId = null)
         {
@@ -82,35 +82,49 @@ namespace BookingGuardian.Controllers
                 };
             }
 
-            var total = await query.CountAsync();
-            var items = await query
-                .OrderByDescending(a => a.DetectedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            _logger.LogInformation("Query returned {ItemCount} of {TotalCount} total anomalies.", items.Count, total);
-
-            var now = DateTime.UtcNow;
-            var data = items.Select(a => new
+            try 
             {
-                a.Id,
-                a.DetectedAt,
-                MinutesSinceDetected = (int)(now - a.DetectedAt).TotalMinutes,
-                a.Status,
-                bookingReference = a.Booking?.ReferenceNo,
-                customerName = a.Booking?.CustomerName,
-                route = a.Booking?.Route,
-                operatorName = a.Booking?.OperatorName,
-                passengerCount = a.Booking?.PassengerCount,
-                travelDate = a.Booking?.TravelDate,
-                amount = a.Booking?.Amount,
-                paymentAt = a.Booking?.PaymentAt,
-                endpointHealthId = a.EndpointHealthId,
-                cause = a.EndpointHealth != null ? $"{a.EndpointHealth.Name} DOWN" : "Platform Delay / Other"
-            }).ToList();
+                var total = await query.CountAsync();
+                var items = await query
+                    .OrderByDescending(a => a.DetectedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
-            return Ok(new { data, total, page, pageSize, outageContext });
+                _logger.LogInformation("Query returned {ItemCount} of {TotalCount} total anomalies.", items.Count, total);
+
+                var now = DateTime.UtcNow;
+                var data = items.Select(a => new
+                {
+                    a.Id,
+                    a.DetectedAt,
+                    MinutesSinceDetected = (int)(now - a.DetectedAt).TotalMinutes,
+                    a.Status,
+                    bookingReference = a.Booking?.ReferenceNo,
+                    customerName = a.Booking?.CustomerName,
+                    route = a.Booking?.Route,
+                    operatorName = a.Booking?.OperatorName,
+                    passengerCount = a.Booking?.PassengerCount,
+                    travelDate = a.Booking?.TravelDate,
+                    amount = a.Booking?.Amount,
+                    paymentAt = a.Booking?.PaymentAt,
+                    endpointHealthId = a.EndpointHealthId,
+                    cause = a.EndpointHealth != null 
+                        ? $"Insight: {a.EndpointHealth.Name} outage correlated with this transaction." 
+                        : "Insight: Booking creation timeout / Platform latency detected."
+                }).ToList();
+
+                return Ok(new { data, total, page, pageSize, outageContext });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FAILED_TO_FETCH_ANOMALIES: Structural database mismatch or connection issue.");
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = "Database synchronization error. Please check engine logs.",
+                    error = ex.Message 
+                });
+            }
         }
 
         [HttpGet("trend")]

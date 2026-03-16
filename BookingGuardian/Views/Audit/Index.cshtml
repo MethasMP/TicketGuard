@@ -1,9 +1,9 @@
 @model List<BookingGuardian.Models.AuditLogViewModel>
 @{
-    ViewData["Title"] = "TicketGuard Audit Logs";
+    ViewData["Title"] = "Audit Trail";
     var total = (int)(ViewBag.Total ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
-    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var pageSize = (int)(ViewBag.PageSize ?? 10);
     var action = (string)(ViewBag.Action ?? "");
     var q = (string)(ViewBag.Query ?? "");
     var totalPages = Math.Max(1, (int)Math.Ceiling((double)total / pageSize));
@@ -15,8 +15,12 @@
     <div class="mb-5 px-2 px-md-0">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-end border-bottom border-white border-opacity-10 pb-4 gap-4">
             <div>
-                <h1 class="title-main text-white">TRANSPARENCY <span class="text-opacity-50">LOG</span></h1>
-                <p class="subtitle-main text-secondary">Immutable record of every TicketGuard intervention</p>
+                <h1 class="title-main text-white">AUDIT <span class="text-opacity-50">TRAIL</span></h1>
+                <p class="subtitle-main text-secondary d-flex align-items-center gap-2">
+                    <span class="badge bg-success-subtle text-success live-only" style="font-size: 10px; letter-spacing: 0.1em;">LIVE MODE</span>
+                    <span class="badge bg-warning-subtle text-warning test-only" style="font-size: 10px; letter-spacing: 0.1em;">TEST MODE</span>
+                    <span>Complete record of every intervention and action</span>
+                </p>
             </div>
             <div class="text-end d-flex flex-column align-items-end gap-2">
                 <div class="badge bg-white bg-opacity-10 font-mono fw-400 p-2 px-3 rounded-pill text-secondary border border-white border-opacity-10">
@@ -376,7 +380,7 @@
 
             const query = (searchInput?.value || '').trim().toLowerCase();
             const action = (actionFilter?.value || '').trim().toUpperCase();
-            const pageLimit = parseInt(pageSizeFilter?.value || '20', 10);
+            const pageLimit = parseInt(pageSizeFilter?.value || '10', 10);
 
             // Core filter algorithm: array.filter over visible rows data
             const matchedRows = rows.filter((row) => {

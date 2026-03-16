@@ -39,6 +39,7 @@ namespace BookingGuardian.Data
                 entity.Property(e => e.Route).HasColumnName("route");
                 entity.Property(e => e.OperatorName).HasColumnName("operator_name");
                 entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+                entity.Property(e => e.CustomerEmail).HasColumnName("CustomerEmail");
                 entity.Property(e => e.PassengerCount).HasColumnName("passenger_count");
                 entity.Property(e => e.TravelDate).HasColumnName("travel_date");
                 entity.Property(e => e.Amount).HasColumnName("amount");
@@ -78,7 +79,7 @@ namespace BookingGuardian.Data
                 entity.Property(e => e.PerformedBy).HasColumnName("performed_by");
                 entity.Property(e => e.IpAddress).HasColumnName("ip_address");
                 entity.Property(e => e.UserAgent).HasColumnName("user_agent");
-                entity.Property(e => e.Note).HasColumnName("note"); // Matching entities property
+                entity.Property(e => e.Note).HasColumnName("note"); 
                 entity.Property(e => e.Detail).HasColumnName("detail");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.HasIndex(a => new { a.EntityType, a.EntityId }).HasDatabaseName("idx_entity");
@@ -96,6 +97,42 @@ namespace BookingGuardian.Data
                 entity.Property(e => e.CheckedAt).HasColumnName("checked_at");
                 entity.HasIndex(e => new { e.Name, e.CheckedAt }).HasDatabaseName("idx_name_time");
             });
+        }
+
+        public async Task SeedAsync()
+        {
+            if (!await Users.AnyAsync())
+            {
+                await Users.AddAsync(new User
+                {
+                    Email = "admin@ticketguard.io",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                    FullName = "System Administrator",
+                    Role = "Admin",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!await Bookings.AnyAsync())
+            {
+                await Bookings.AddAsync(new Booking
+                {
+                    ReferenceNo = "TG-SEED-01",
+                    CustomerName = "Seed Passenger",
+                    Route = "BKK-HKT",
+                    OperatorName = "AirGuardian",
+                    CustomerEmail = "passenger@seed.local",
+                    PaymentStatus = "SUCCESS",
+                    BookingStatus = "PENDING",
+                    PaymentAt = DateTime.UtcNow.AddHours(-1),
+                    CreatedAt = DateTime.UtcNow.AddHours(-1.5),
+                    Amount = 1500,
+                    PassengerCount = 1,
+                    TravelDate = DateTime.UtcNow.AddDays(7)
+                });
+            }
+
+            await SaveChangesAsync();
         }
     }
 }

@@ -9,6 +9,9 @@ namespace BookingGuardian.BackgroundServices
         public bool AutoSend { get; set; }
         public List<string> Recipients { get; set; } = new();
         public string SmtpHost { get; set; } = string.Empty;
+        public int SmtpPort { get; set; } = 587; // Default for TLS
+        public string? SmtpUser { get; set; }
+        public string? SmtpPass { get; set; }
     }
 
     public class MonthlyReportEmailJob : BackgroundService
@@ -85,7 +88,17 @@ namespace BookingGuardian.BackgroundServices
 
             message.Attachments.Add(new Attachment(new MemoryStream(pdf), $"ticketguard-report-{monthToReport:yyyy-MM}.pdf", "application/pdf"));
 
-            using var smtpClient = new SmtpClient(_options.SmtpHost);
+            using var smtpClient = new SmtpClient(_options.SmtpHost, _options.SmtpPort)
+            {
+                EnableSsl = true,
+                UseDefaultCredentials = false
+            };
+
+            if (!string.IsNullOrWhiteSpace(_options.SmtpUser) && !string.IsNullOrWhiteSpace(_options.SmtpPass))
+            {
+                smtpClient.Credentials = new System.Net.NetworkCredential(_options.SmtpUser, _options.SmtpPass);
+            }
+
             await smtpClient.SendMailAsync(message, ct);
 
             _lastSentForMonth = sendMarker;

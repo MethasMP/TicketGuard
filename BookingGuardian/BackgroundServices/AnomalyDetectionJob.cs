@@ -10,22 +10,39 @@ namespace BookingGuardian.BackgroundServices
         private readonly ILogger<AnomalyDetectionJob> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
+        private readonly ISystemModeService _modeService;
+        private static readonly SemaphoreSlim _syncLock = new SemaphoreSlim(1, 1);
 
         public AnomalyDetectionJob(
             ILogger<AnomalyDetectionJob> logger,
             IServiceProvider serviceProvider,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ISystemModeService modeService)
         {
-            _logger = logger;
-            _serviceProvider = serviceProvider;
-            _configuration = configuration;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _modeService = modeService ?? throw new ArgumentNullException(nameof(modeService));
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                var intervalMinutes = _configuration.GetValue<int>("AnomalyDetection:IntervalMinutes", 5);
+                // Logic: TEST Mode uses Seconds, LIVE Mode uses Minutes
+                var isTest = _modeService.CurrentMode == SystemMode.TEST;
+
+                TimeSpan interval;
+                if (isTest)
+                {
+                    var sec = _configuration.GetValue<int>("AnomalyDetection:IntervalSeconds", 15);
+                    interval = TimeSpan.FromSeconds(sec);
+                }
+                else
+                {
+                    var min = _configuration.GetValue<int>("AnomalyDetection:IntervalMinutes", 5);
+                    interval = TimeSpan.FromMinutes(min);
+                }
                 
                 try
                 {
@@ -36,21 +53,40 @@ namespace BookingGuardian.BackgroundServices
                     _logger.LogError(ex, "Error occurred in AnomalyDetectionJob");
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(intervalMinutes), stoppingToken);
+                await Task.Delay(interval, stoppingToken);
             }
         }
 
         public async Task DetectAndRecoverAnomaliesAsync(CancellationToken stoppingToken = default)
         {
-            var thresholdMinutes = _configuration.GetValue<int>("AnomalyDetection:ThresholdMinutes", 10);
-            var autoRecoveryEnabled = _configuration.GetValue<bool>("AnomalyDetection:AutoRecoveryEnabled", true);
+            if (!await _syncLock.WaitAsync(0)) 
+            {
+                _logger.LogWarning("AnomalyDetectionJob is already running. Skipping this cycle.");
+                return;
+            }
 
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
+            try 
+            {
+                var isTest = _modeService.CurrentMode == SystemMode.TEST;
+                DateTime thresholdTime;
+
+                if (isTest)
+                {
+                    var sec = _configuration.GetValue<int>("AnomalyDetection:ThresholdSeconds", 30);
+                    thresholdTime = DateTime.UtcNow.AddSeconds(-sec);
+                }
+                else
+                {
+                    var min = _configuration.GetValue<int>("AnomalyDetection:ThresholdMinutes", 10);
+                    thresholdTime = DateTime.UtcNow.AddMinutes(-min);
+                }
+
+                var autoRecoveryEnabled = _configuration.GetValue<bool>("AnomalyDetection:AutoRecoveryEnabled", true);
+                var runTime = DateTime.UtcNow;
+
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
             var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
-
-            var thresholdTime = DateTime.UtcNow.AddMinutes(-thresholdMinutes);
-            var runTime = DateTime.UtcNow;
 
             // Identify potential anomalies: SUCCESS payment, PENDING booking, older than threshold
             var stuckBookings = await dbContext.Bookings
@@ -60,14 +96,15 @@ namespace BookingGuardian.BackgroundServices
                 .Where(b => !dbContext.Anomalies.Any(a => a.BookingId == b.Id))
                 .ToListAsync();
 
+            var healthHistoryWindow = runTime.AddDays(-14);
             var endpointHealthHistory = await dbContext.EndpointHealths
-                .Where(e => e.CheckedAt <= runTime)
+                .Where(e => e.CheckedAt >= healthHistoryWindow && e.CheckedAt <= runTime)
                 .OrderByDescending(e => e.CheckedAt)
                 .ToListAsync();
 
             var healthByEndpoint = endpointHealthHistory
                 .GroupBy(e => e.Name)
-                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CheckedAt).ToList());
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CheckedAt).ThenByDescending(x => x.Id).ToList());
 
             if (stuckBookings.Any())
             {
@@ -91,8 +128,16 @@ namespace BookingGuardian.BackgroundServices
 
             // AUTO RECOVERY PHASE (Zero-Touch)
             // Circuit Breaker: If any critical service is DOWN (active outage), inhibit auto-recovery
-            var latestHealthStatus = healthByEndpoint.Values
-                .Select(h => h.OrderByDescending(x => x.CheckedAt).FirstOrDefault())
+            // NEW: Only consider endpoints that are CURRENTLY in configuration
+            var configuredEndpoints = _configuration.GetSection("HealthCheck:Endpoints")
+                .GetChildren()
+                .Select(x => x.GetValue<string>("Name"))
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToList();
+
+            var latestHealthStatus = healthByEndpoint
+                .Where(kvp => configuredEndpoints.Contains(kvp.Key)) // Filter to current config
+                .Select(kvp => kvp.Value.OrderByDescending(x => x.CheckedAt).FirstOrDefault())
                 .ToList();
 
             var activeOutages = latestHealthStatus.Where(h => h?.Status == "DOWN").ToList();
@@ -145,7 +190,7 @@ namespace BookingGuardian.BackgroundServices
                             note,
                             "SYSTEM_GUARDIAN",
                             "127.0.0.1",
-                            "BookingGuardian/ZeroTouch");
+                            "TicketGuard/ZeroTouch");
                         if (result.Success)
                         {
                             recoveredCount++;
@@ -178,6 +223,11 @@ namespace BookingGuardian.BackgroundServices
                 _logger.LogDebug("AnomalyDetectionJob run complete. No new issues found.");
             }
         }
+        finally 
+        {
+            _syncLock.Release();
+        }
+    }
 
         private static int? ResolveLinkedOutageHealthId(DateTime bookingPaymentAt, IEnumerable<EndpointHealth> endpointHealthHistory)
         {

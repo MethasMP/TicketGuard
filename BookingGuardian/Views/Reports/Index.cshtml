@@ -1,7 +1,7 @@
 @using System.Text.Json
 @model BookingGuardian.Models.ReportsPageViewModel
 @{
-    ViewData["Title"] = "BusOnlineTicket Analytics";
+    ViewData["Title"] = "Analytics";
     var dayLabelsJson = JsonSerializer.Serialize(Model.DayOfWeekLabels);
     var dayCountsJson = JsonSerializer.Serialize(Model.DayOfWeekCounts);
     var causeLabelsJson = JsonSerializer.Serialize(Model.TopCauseLabels);
@@ -11,8 +11,12 @@
 <div class="mb-5">
     <div class="d-flex justify-content-between align-items-end border-bottom border-secondary border-opacity-25 pb-3">
         <div>
-            <h1 class="title-main">Growth Intelligence</h1>
-            <p class="subtitle-main">Strategic insights for BusOnlineTicket network growth</p>
+            <h1 class="title-main">Analytics</h1>
+            <p class="subtitle-main d-flex align-items-center gap-2">
+                <span class="badge bg-success-subtle text-success live-only" style="font-size: 10px; letter-spacing: 0.1em;">LIVE MODE</span>
+                <span class="badge bg-warning-subtle text-warning test-only" style="font-size: 10px; letter-spacing: 0.1em;">TEST MODE</span>
+                <span>Revenue, trends, and operator insights</span>
+            </p>
         </div>
         <div class="text-end mb-1">
             <form method="get" class="d-inline-flex align-items-center gap-3">
@@ -51,55 +55,48 @@
     <div class="col-md-3">
         <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center info-wrapper">
             <div class="metric-value mb-2">
-                @Model.AvgResolutionMinutes.ToString("N1")<span class="metric-unit">min</span>
+                @if(Model.AvgResolutionMinutes < 60) {
+                    <span>@Model.AvgResolutionMinutes.ToString("N0")<span class="metric-unit">min</span></span>
+                } else if(Model.AvgResolutionMinutes < 1440) {
+                    <span>@((Model.AvgResolutionMinutes / 60).ToString("N1"))<span class="metric-unit">h</span></span>
+                } else {
+                    <span>@((Model.AvgResolutionMinutes / 1440).ToString("N1"))<span class="metric-unit">d</span></span>
+                }
             </div>
             <div class="text-secondary small fw-700 tracking-wider">RESOLUTION TIME</div>
             <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
-                เวลาเฉลี่ยในการกู้คืนบุ๊คกิ้ง (Avg. time to recover journey)
+                ค่าเฉลี่ยความเร็วในการกู้คืน (Avg. speed of recovery)
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center">
-            <div class="metric-value mb-2 @(Model.MostDownEventKey == "-" ? "text-success" : "text-white")" style="font-size: @(Model.MostDownEventKey == "-" ? "2.2rem" : "1.1rem");">
-                @(Model.MostDownEventKey == "-" ? "STABLE" : Model.MostDownEventKey.ToUpper())
-                @if(Model.MostDownEventKey != "-" && Model.MostDownEventCount > 0)
-                {
-                    <span class="text-warning small font-mono opacity-75 ms-2">(@Model.MostDownEventCount)</span>
-                }
+        @if(Model.MostDownEventKey != "-") {
+            <a href="/health/history?name=@Uri.EscapeDataString(Model.MostDownEventKey)&hours=720" class="text-decoration-none h-100 d-block">
+                <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center info-wrapper shadow-hover border-warning border-opacity-10">
+                    <div class="text-white fw-900 mb-1" style="font-size: 1.25rem; letter-spacing: -0.02em; line-height: 1.1;">
+                        @Model.MostDownEventKey.ToUpper()
+                    </div>
+                    <div class="text-warning fw-800 font-mono mb-3" style="font-size: 0.85rem;">
+                        @Model.MostDownEventCount OUTAGES
+                    </div>
+                    <div class="text-secondary small fw-700 tracking-wider text-uppercase" style="font-size: 0.65rem; opacity: 0.6;">
+                        TOP RISK AREA
+                    </div>
+                    <div class="info-tooltip">
+                        <strong>Insight:</strong> ส่วนประกอบนี้ล่มบ่อยที่สุดในช่วงเวลานี้ (Source: Telemetry Logs)
+                    </div>
+                </div>
+            </a>
+        } else {
+            <div class="glass-card p-4 text-center h-100 d-flex flex-column justify-content-center border-success border-opacity-10">
+                <div class="text-success fw-900 mb-1" style="font-size: 1.5rem;">STABLE</div>
+                <div class="text-secondary small fw-700 tracking-wider text-uppercase" style="font-size: 0.65rem;">SYSTEM STATUS</div>
             </div>
-            <div class="text-secondary small fw-700 tracking-wider mt-auto">HI-VOLATILITY NODE</div>
-        </div>
+        }
     </div>
 </div>
 
-<div class="row g-4 mb-5">
-    <!-- Main Timeline -->
-    <div class="col-lg-8">
-        <div class="guardian-card h-100 p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="h5 fw-600 mb-0">Chronological Distribution</h3>
-                <span class="badge bg-secondary-subtle">When</span>
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="dayChart"></canvas>
-            </div>
-        </div>
-    </div>
 
-    <!-- Causal Roots -->
-    <div class="col-lg-4">
-        <div class="guardian-card h-100 p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="h5 fw-600 mb-0">Causal Roots</h3>
-                <span class="badge bg-secondary-subtle">Why</span>
-            </div>
-            <div class="chart-wrapper" style="height: 300px; padding: 10px;">
-                <canvas id="typeChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="row g-4 mb-5">
     <div class="col-lg-6">
@@ -160,96 +157,9 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script>
-        const dayLabels = @Html.Raw(dayLabelsJson);
-        const dayCounts = @Html.Raw(dayCountsJson);
-        const causeLabels = @Html.Raw(causeLabelsJson);
-        const causeCounts = @Html.Raw(causeCountsJson);
-
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-
-            // Daily chart setup - minimalistic
-            const ctxDay = document.getElementById('dayChart').getContext('2d');
-            const grad = ctxDay.createLinearGradient(0, 0, 0, 300);
-            grad.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-            grad.addColorStop(1, 'rgba(59, 130, 246, 0)');
-
-            Chart.defaults.color = 'rgba(255,255,255,0.4)';
-            Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
-
-            new Chart(ctxDay, {
-                type: 'line',
-                data: {
-                    labels: dayLabels,
-                    datasets: [{
-                        data: dayCounts,
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#3b82f6',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        backgroundColor: grad,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
-                            border: { display: false }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            border: { display: false }
-                        }
-                    },
-                    plugins: { legend: { display: false }, tooltip: { cornerRadius: 8, padding: 12 } }
-                }
-            });
-
-            // Doughnut purely aesthetic
-            new Chart(document.getElementById('typeChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: causeLabels,
-                    datasets: [{
-                        data: causeCounts,
-                        backgroundColor: [
-                            '#3b82f6', '#0ea5e9', '#6366f1', '#8b5cf6', '#14b8a6', '#64748b'
-                        ],
-                        borderWidth: 0,
-                        hoverOffset: 15
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '85%',
-                    layout: {
-                        padding: {
-                            top: 20,
-                            bottom: 20,
-                            left: 10,
-                            right: 10
-                        }
-                    },
-                    plugins: { 
-                        legend: { 
-                            position: 'bottom',
-                            labels: { usePointStyle: true, padding: 25, boxWidth: 8 }
-                        },
-                        tooltip: { cornerRadius: 8, padding: 12 }
-                    }
-                }
-            });
         });
     </script>
 }

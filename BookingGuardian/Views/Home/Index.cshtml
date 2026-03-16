@@ -1,406 +1,375 @@
 @{
-    ViewData["Title"] = "BusOnlineTicket Command Center";
+    ViewData["Title"] = "TicketGuard Dashboard";
 }
 
-<div class="mb-5">
-    <div class="d-flex justify-content-between align-items-end border-bottom border-secondary border-opacity-25 pb-3">
+<div class="app-container p-4">
+    <div class="mb-5 d-flex justify-content-between align-items-end">
         <div>
-            <h1 class="title-main">Guardian Mission Control</h1>
-            <p class="subtitle-main">Ensuring Safe Passage for Every Journey</p>
+            <h1 class="title-main mb-0">Command Center</h1>
+            <p class="text-secondary small font-mono d-flex align-items-center gap-2">
+                <span class="live-only text-success">● Live Mode Active</span>
+                <span class="test-only text-warning">● Test Mode Active</span>
+                <span class="opacity-50">/</span>
+                <span id="lastUpdatedText">Syncing...</span>
+            </p>
         </div>
-        <div class="text-end d-flex align-items-center gap-3">
-            <span class="text-secondary font-mono small" id="lastUpdatedText">Syncing...</span>
-            <button onclick="loadDashboard(true)" class="btn btn-dark btn-sm rounded-pill d-inline-flex align-items-center gap-2 px-3">
-                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-                Refresh
-            </button>
+        <div class="text-end">
+            <span class="tactile-label" style="margin-bottom: 0;">GLOBAL STATUS</span>
+            <div id="pulseSubtitle" class="fw-800 text-light h5 mb-0">System Resolute</div>
         </div>
     </div>
-</div>
 
-<!-- Key Metrics -->
-<div class="row g-4 mb-5">
-    <div class="col-md-3">
-        <div class="guardian-card p-4 info-wrapper">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div class="p-2 rounded bg-danger bg-opacity-10 text-danger">
-                    <i data-lucide="shield-alert"></i>
-                </div>
-                <span class="text-secondary small fw-600">IMPACT</span>
-            </div>
-            <div class="display-5 fw-800 mb-1 text-danger" id="openAnomalies">0</div>
-            <div class="text-secondary small">Passengers in Limbo</div>
-            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
-                จำนวนบุ๊คกิ้งที่ติดปัญหาและผู้โดยสารกำลังรอการแก้ไข (Bookings awaiting resolution)
+    <!-- Glassmorphism Metric Grid -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <span class="tactile-label-premium">
+                    <i data-lucide="alert-triangle" class="text-warning" style="width: 14px;"></i>
+                    Revenue at Risk
+                </span>
+                <div class="hero-value risk" id="revenueRiskText">฿0</div>
+                <div class="text-secondary small fw-600">Total value of <span id="openCountText">0</span> active threats</div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="guardian-card p-4 info-wrapper">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div class="p-2 rounded bg-success bg-opacity-10 text-success">
-                    <i data-lucide="ticket"></i>
-                </div>
-                <span class="text-secondary small fw-600">STABILITY</span>
-            </div>
-            <div class="display-5 fw-800 mb-1" id="savedBookings">0</div>
-            <div class="text-secondary small">Journeys Saved</div>
-            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
-                ยอดรวมการจองที่ระบบช่วยกู้คืนสำเร็จ (Successfully secured bookings)
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <span class="tactile-label-premium">
+                    <i data-lucide="shield-check" class="text-success" style="width: 14px;"></i>
+                    Revenue Saved
+                </span>
+                <div class="hero-value saved" id="revenueSavedText">฿0</div>
+                <div class="text-secondary small fw-600"><span id="savedCount">0</span> bookings protected today</div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="guardian-card p-4 info-wrapper">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div class="p-2 rounded bg-primary bg-opacity-10 text-primary">
-                    <i data-lucide="banknote"></i>
-                </div>
-                <span class="text-secondary small fw-600">RECOVERY</span>
-            </div>
-            <div class="display-5 fw-800 mb-1" id="recoveredRevenue">฿0</div>
-            <div class="text-secondary small">Revenue Saved</div>
-            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
-                ยอดเงินรวมทั้งหมดที่กู้คืนกลับมาได้จากการแก้ปัญหา (Total revenue recovered)
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="guardian-card p-4 info-wrapper">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div class="p-2 rounded bg-info bg-opacity-10 text-info">
-                    <i data-lucide="zap"></i>
-                </div>
-                <span class="text-secondary small fw-600">EFFICIENCY</span>
-            </div>
-            <div class="display-5 fw-800 mb-1" id="guardianAutonomy">0%</div>
-            <div class="text-secondary small">Guardian Autonomy</div>
-            <div class="info-tooltip" style="bottom: 100%; left: 0; width: 220px; transform: translateY(-10px);">
-                อัตราการแก้ไขปัญหาอัตโนมัติโดยไม่ใช้คน (Auto-recovery success rate)
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4 mb-5">
-    <!-- Main Issue Tracking -->
-    <div class="col-lg-8">
-        <div class="guardian-card h-100">
-            <div class="p-4 border-bottom border-light d-flex justify-content-between align-items-center">
-                <h3 class="h6 fw-800 mb-0 d-flex align-items-center gap-2">
-                    <i data-lucide="shield-check" class="text-secondary" style="width: 18px;"></i>
-                    Active Protection Feed
-                    <span id="issuesVisibleCount" class="badge bg-light text-secondary fw-500 ms-2">0 items</span>
-                </h3>
-                <div class="d-flex gap-2">
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-dark border border-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" id="statusFilterBtn">
-                            Active Alerts
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg border-secondary" style="z-index: 1050;">
-                            <li><a class="dropdown-item" href="#" onclick="filterAnomalies('OPEN', event)">Awaiting Recovery</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="filterAnomalies('RESOLVED', event)">Secured Today</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="filterAnomalies('IGNORED', event)">Discarded Alerts</a></li>
-                            <li><div class="dropdown-divider border-secondary"></div></li>
-                            <li><a class="dropdown-item" href="#" onclick="filterAnomalies('ALL', event)">Full History</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="outageFilterBar" class="px-4 py-2 bg-warning bg-opacity-10 border-bottom d-none">
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="fw-600 text-warning-emphasis">
-                        <i data-lucide="filter" style="width: 12px; margin-right: 4px;"></i>
-                        Targeted Outage: <span id="outageFilterName"></span>
-                    </small>
-                    <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="clearOutageFilter()">Clear Filter</button>
-                </div>
-            </div>
-
-            <div class="table-responsive" style="max-height: 520px;">
-                <table class="table align-middle mb-0 guardian-table" id="anomaliesTable">
-                    <thead class="sticky-top">
-                        <tr>
-                            <th class="ps-4 py-3 small fw-700 text-uppercase tracking-wider">Reference</th>
-                            <th class="py-3 small fw-700 text-uppercase tracking-wider">Route & Entity</th>
-                            <th class="py-3 small fw-700 text-uppercase tracking-wider">Impact</th>
-                            <th class="py-3 small fw-700 text-uppercase tracking-wider">Detected</th>
-                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="5" class="p-5 text-center">
-                                <div class="spinner-border spinner-border-sm text-primary opacity-50 me-2"></div>
-                                <span class="text-secondary small">Initializing data layer...</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <span class="tactile-label-premium">
+                    <i data-lucide="zap" class="text-primary" style="width: 14px;"></i>
+                    System Autonomy
+                </span>
+                <div class="hero-value" id="autonomyText">100%</div>
+                <div class="text-secondary small fw-600">Automated recovery efficiency</div>
             </div>
         </div>
     </div>
 
-    <!-- Partner System Pulse -->
-    <div class="col-lg-4">
-        <div class="guardian-card h-100">
-            <div class="p-4 border-bottom border-light">
-                <h3 class="h6 fw-800 mb-0 d-flex align-items-center gap-2">
-                    <i data-lucide="activity" class="text-secondary" style="width: 18px;"></i>
-                    System Pulse
-                </h3>
-            </div>
-            <div class="p-0">
-                <div id="healthList" class="health-pulse-list">
-                    <div class="p-5 text-center text-secondary small">
-                        Monitoring connections...
-                    </div>
+    <!-- Action Feed / Zero State -->
+    <div class="glass-card glass-card-static border-0 p-0" style="overflow: hidden;">
+        <div class="p-4 border-bottom border-light border-opacity-10 d-flex justify-content-between align-items-center">
+            <h3 class="h6 fw-800 mb-0 d-flex align-items-center gap-2">
+                <i data-lucide="activity" class="text-secondary" style="width: 18px;"></i>
+                Action Narrative
+            </h3>
+        </div>
+
+        <div id="zeroStateHero" class="d-none">
+            <div class="zero-state-container p-5">
+                <div class="zero-state-icon">
+                    <i data-lucide="shield-check" style="width: 32px; height: 32px;"></i>
                 </div>
+                <h2 class="h4 fw-800 mb-2">Horizon Clear</h2>
+                <p class="text-secondary small mb-0">No active anomalies detected in current booking cycle.</p>
+            </div>
+        </div>
+
+        <div class="table-responsive" id="anomalyTableWrapper">
+            <table class="table table-hover-custom align-middle mb-0 text-light" id="anomaliesTable" style="--bs-table-bg: transparent;">
+                <thead style="background: rgba(255,255,255,0.02);">
+                    <tr>
+                        <th class="ps-4 py-3 x-small fw-800 text-uppercase tracking-wider">Reference</th>
+                        <th class="py-3 x-small fw-800 text-uppercase tracking-wider">Issue Context</th>
+                        <th class="py-3 x-small fw-800 text-uppercase tracking-wider">Revenue</th>
+                        <th class="py-3 x-small fw-800 text-uppercase tracking-wider">Time</th>
+                        <th class="text-center py-3 x-small fw-800 text-uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="p-5 text-center text-secondary small">Polling booking nodes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Test Mode Tools - Visible only in TEST mode -->
+    <div id="guardianLabsSection" class="mt-5 pt-5 border-top border-light border-opacity-5 test-only">
+        <div class="mb-4">
+            <h2 class="h6 fw-900 mb-1 font-mono text-warning text-uppercase tracking-widest d-flex align-items-center gap-2">
+                <i data-lucide="flask-conical" style="width:16px;"></i> System Simulator
+            </h2>
+            <p class="text-secondary small mb-0">Use these tools to verify how the application handles various scenarios.</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-3">
+                <button onclick="simulatePlant()" class="btn btn-dark w-100 py-3 font-mono x-small fw-800 border-light border-opacity-10 shadow-sm transition-all hover-glow mb-2">
+                    <i data-lucide="database" class="me-2 text-warning" style="width:14px;"></i> Create Error Case
+                </button>
+                <div class="text-secondary x-small px-1">Adds a stuck booking to test detection.</div>
+            </div>
+            <div class="col-md-3">
+                <button id="outageControlBtn" onclick="simulateOutage()" class="btn btn-dark w-100 py-3 font-mono x-small fw-800 border-light border-opacity-10 shadow-sm transition-all hover-glow mb-2">
+                    <span id="outageIcon"><i data-lucide="refresh-cw" class="me-2 text-secondary animate-spin" style="width:14px;"></i></span>
+                    <span id="outageText">Syncing Node...</span>
+                </button>
+                <div class="text-secondary x-small px-1">Simulate a payment gateway failure.</div>
+            </div>
+            <div class="col-md-2">
+                <button onclick="simulateScan()" class="btn btn-dark w-100 py-3 font-mono x-small fw-800 border-primary border-opacity-20 shadow-sm transition-all hover-glow mb-2">
+                    <i data-lucide="refresh-cw" class="me-2 text-primary" style="width:14px;"></i> Run System Sync
+                </button>
+                <div class="text-secondary x-small px-1">Force an immediate scan.</div>
+            </div>
+            <div class="col-md-2">
+                <button onclick="simulateEmail()" class="btn btn-dark w-100 py-3 font-mono x-small fw-800 border-success border-opacity-20 shadow-sm transition-all hover-glow mb-2">
+                    <i data-lucide="mail" class="me-2 text-success" style="width:14px;"></i> Verify Alerts
+                </button>
+                <div class="text-secondary x-small px-1">Test email and SMS delivery.</div>
+            </div>
+            <div class="col-md-2">
+                <a href="/system/tester" class="btn btn-primary w-100 py-3 font-mono x-small fw-900 shadow-lg text-decoration-none transition-all hover-lift mb-2">
+                    <i data-lucide="flask-conical" class="me-2" style="width:14px;"></i> Advanced Testing
+                </a>
+                <div class="text-secondary x-small px-1">Open full simulation suite.</div>
             </div>
         </div>
     </div>
 </div>
 
-
-
+<style>
+    .hover-glow:hover {
+        background: rgba(255,255,255,0.05) !important;
+        border-color: rgba(255,255,255,0.3) !important;
+        box-shadow: 0 0 15px rgba(255,255,255,0.05);
+    }
+    .hover-lift:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+    }
+    .text-primary-emphasis { color: #0072ff !important; }
+</style>
 
 @section Scripts {
     @Html.AntiForgeryToken()
     <script>
-        let allData = { OPEN: [], RESOLVED: [], IGNORED: [], ALL: [] };
-        let currentStatusFilter = 'OPEN';
-        let activeOutageFilter = null;
-
-        function setStatusFilterLabel(status) {
-            let label = 'Awaiting Recovery';
-            if (status === 'ALL') label = 'Full History';
-            if (status === 'RESOLVED') label = 'Secured Today';
-            if (status === 'IGNORED') label = 'Discarded Alerts';
-            document.getElementById('statusFilterBtn').innerText = label;
-        }
-
-        function redirectToLoginOnUnauthorized(response) {
-            if (response.status !== 401) return false;
-            const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-            window.location.href = `/Account/Login?returnUrl=${returnUrl}`;
-            return true;
-        }
-
         async function loadDashboard(isManual = false) {
+            // Add a slight delay for manual sync to show effect
+            if (isManual) {
+                const syncBtn = document.querySelector('button[onclick="simulateScan()"]');
+                if (syncBtn) syncBtn.innerHTML = '<i class="refresh-cw spin"></i> Syncing...';
+            }
             try {
-                // If silent refresh, we don't show the initial loading state
-                await Promise.all([
-                    loadHealth(isManual),
-                    loadSummary(isManual),
-                    loadAnomaliesForCurrentContext(isManual)
+                const [hbResponse, anResponse] = await Promise.all([
+                    fetch('/api/heartbeat'),
+                    fetch('/api/anomaly?pageSize=10&status=OPEN')
                 ]);
-                const el = document.getElementById('lastUpdatedText');
-                if (el) {
-                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    el.innerText = `Connected • ${time}`;
-                    if (isManual) el.classList.add('text-primary'); else el.classList.remove('text-primary');
+                
+                if (hbResponse.status === 401) {
+                    window.location.href = '/Account/Login';
+                    return;
                 }
+
+                // Handle Anomaly 401 separately (might be restricted but heartbeat is public)
+                let anData = { data: [] };
+                if (anResponse.ok) {
+                    try { anData = await anResponse.json(); } catch(e) {}
+                } else if (anResponse.status === 401) {
+                    console.warn('Dashboard: Anomaly feed unauthorized.');
+                }
+
+                if (hbResponse.ok) {
+                    const hb = await hbResponse.json();
+                    updateSpatialStatus(hb);
+                    updateTable(anData.data, hb.status === 'CRITICAL');
+                    
+                    // Server Dominance: If not locally locked, follow the heartbeat status
+                    if (!window.simulatorLock) {
+                        updateOutageUI(hb.status === 'CRITICAL' ? 'DOWN' : 'UP');
+                    }
+                }
+                
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const currentMode = localStorage.getItem('guardian_mode') === 'LIVE' ? 'Live Mode' : 'Test Mode';
+                document.getElementById('lastUpdatedText').innerText = `${currentMode} • ${time}`;
+                
                 lucide.createIcons();
             } catch (err) {
-                console.error('Dashboard Load Error:', err);
-                if (isManual) {
-                    const tbody = document.getElementById('anomaliesTable').querySelector('tbody');
-                    tbody.innerHTML = `<tr><td colspan="5" class="p-5 text-center text-danger">Monitoring link severed. Retrying...</td></tr>`;
-                }
+                console.error('Spatial Heartbeat Error:', err);
             }
         }
 
-        async function loadSummary(isManual) {
-            const response = await fetch('/api/anomaly/summary');
-            if (!response.ok) {
-                if (redirectToLoginOnUnauthorized(response)) return;
-                return;
-            }
-            const s = await response.json();
-            
-            const openEl = document.getElementById('openAnomalies');
-            const savedEl = document.getElementById('savedBookings');
-            const revenueEl = document.getElementById('recoveredRevenue');
-            const autonomyEl = document.getElementById('guardianAutonomy');
+        function updateSpatialStatus(data) {
+            const sub = document.getElementById('pulseSubtitle');
+            const countText = document.getElementById('openCountText');
 
-            // Subtle value updates
-            if (openEl.innerText != (s.openIssues || 0)) openEl.innerText = s.openIssues || 0;
-            if (savedEl.innerText != (s.savedBookings || 0)) savedEl.innerText = s.savedBookings || 0;
+            // Map Backend Status to UI state
+            const statusMap = { 'SAFE': 'safe', 'WARNING': 'signal', 'CRITICAL': 'outage' };
+            const statusClass = statusMap[data.status] || 'safe';
             
-            const revenueText = '฿' + (s.recoveredRevenue || 0).toLocaleString();
-            if (revenueEl.innerText != revenueText) revenueEl.innerText = revenueText;
-            
-            const auto = s.savedBookings > 0 ? Math.round((s.autoRecovered / s.savedBookings) * 100) : 0;
-            if (autonomyEl.innerText != (auto + '%')) autonomyEl.innerText = auto + '%';
+            sub.innerText = data.status === 'SAFE' ? 'System Resolute' : (data.status === 'WARNING' ? 'Signal Detected' : 'Outage Active');
+            sub.className = 'fw-800 h5 mb-0 text-' + (statusClass === 'safe' ? 'success' : (statusClass === 'signal' ? 'warning' : 'danger'));
+
+            countText.innerText = data.openCount;
+            document.getElementById('savedCount').innerText = data.stats.recoveredToday;
+            document.getElementById('revenueRiskText').innerText = data.stats.revenueAtRisk;
+            document.getElementById('revenueSavedText').innerText = data.stats.revenueToday;
+
+            // Autonomy Sentiment
+            const totalActivity = data.stats.recoveredToday + data.openCount;
+            const autoRate = totalActivity > 0 ? Math.round((data.stats.recoveredToday / totalActivity) * 100) : 100;
+            document.getElementById('autonomyText').innerText = autoRate + '%';
         }
 
-        async function loadAnomaliesForCurrentContext(isManual) {
-            let query = `/api/anomaly?pageSize=200`;
-            if (activeOutageFilter) query += `&status=OPEN&outageEndpointHealthId=${activeOutageFilter.id}`;
-            else if (currentStatusFilter === 'RESOLVED') query += `&status=RESOLVED&todayOnly=true`;
-            else query += `&status=${currentStatusFilter}`;
-
-            const response = await fetch(query);
-            if (!response.ok) {
-                if (redirectToLoginOnUnauthorized(response)) return;
-                return;
-            }
-            const payload = await response.json();
-            const data = payload.data || [];
-            
-            if (activeOutageFilter) allData.OPEN = data;
-            else if (currentStatusFilter === 'OPEN') allData.OPEN = data;
-            
-            renderAnomalies(data, isManual);
+        function formatTime(mins) {
+            if (mins < 60) return mins + 'm ago';
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return hours + 'h ' + (mins % 60) + 'm ago';
+            const days = Math.floor(hours / 24);
+            return days + 'd ' + (hours % 24) + 'h ago';
         }
 
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return String(unsafe)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+        let lastDataHash = "";
 
-        function formatTime(minutes) {
-            if (minutes >= 24 * 60) {
-                return Math.floor(minutes / (24 * 60)) + 'd ago';
-            } else if (minutes >= 60) {
-                return Math.floor(minutes / 60) + 'h ago';
-            } else {
-                return minutes + 'm ago';
-            }
-        }
+        function updateTable(data, isOutage) {
+            const currentHash = JSON.stringify(data);
+            if (currentHash === lastDataHash) return; // Silent if no change
+            lastDataHash = currentHash;
 
-        let lastAnomaliesHtml = '';
-        function renderAnomalies(data, isManual) {
             const tbody = document.getElementById('anomaliesTable').querySelector('tbody');
-            document.getElementById('issuesVisibleCount').innerText = `${data.length} items`;
+            const hero = document.getElementById('zeroStateHero');
+            const tableWrapper = document.getElementById('anomalyTableWrapper');
 
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-5 text-center text-secondary small">Feed clear. All journeys are safe.</td></tr>`;
-                lastAnomaliesHtml = '';
+            if (!data || data.length === 0) {
+                hero.classList.remove('d-none');
+                tableWrapper.classList.add('d-none');
                 return;
             }
 
-            const newContent = data.map((item, idx) => {
-                const status = (item.status || '').toUpperCase();
-                
-                // Guardian Status Mapping & Colors
-                let statusLabel = status;
-                let statusClass = 'bg-secondary-subtle text-secondary';
+            hero.classList.add('d-none');
+            tableWrapper.classList.remove('d-none');
 
-                if (status === 'OPEN') {
-                    statusLabel = 'AWAITING RECOVERY';
-                    statusClass = 'bg-danger-subtle text-danger';
-                } else if (status === 'RESOLVED') {
-                    statusLabel = 'SECURED';
-                    statusClass = 'bg-success-subtle text-success';
-                } else if (status === 'IGNORED') {
-                    statusLabel = 'DISCARDED';
-                    statusClass = 'bg-secondary-subtle text-secondary opacity-50';
+            // Only animate the FIRST load, subsequent updates are "Quiet"
+            const isInitialLoad = tbody.innerHTML.includes('Polling booking nodes...');
+            const rowClass = isInitialLoad ? "reveal" : "";
+
+            tbody.innerHTML = data.map((item, idx) => {
+                const mins = item.minutesSinceDetected;
+                let badgeClass = "bg-danger-subtle text-danger border-danger";
+                let badgeText = "AWAITING";
+
+                if (mins >= 1) {
+                    if (isOutage) {
+                        badgeClass = "bg-warning-subtle text-warning border-warning";
+                        badgeText = "CIRCUIT BREAKER";
+                    } else {
+                        badgeClass = "bg-danger text-white border-danger";
+                        badgeText = "RECOVERY DELAYED";
+                    }
                 }
 
-                let statusBadge = `<span class="badge ${statusClass} rounded-pill px-3 py-2 fw-800" style="font-size: 10px; letter-spacing: 0.5px;">${escapeHtml(statusLabel)}</span>`;
-                
-                // Only use 'reveal' animation if it's manual refresh or first load
-                const animationClass = isManual ? 'reveal' : '';
-                const delay = isManual ? `style="--d: ${idx * 0.05}s;"` : '';
-
                 return `
-                <tr class="${animationClass}" ${delay} style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td class="ps-4 fw-800 text-light">#${escapeHtml(item.bookingReference || '---')}</td>
+                <tr class="${rowClass}" style="--d: ${idx * 0.05}s; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <td class="ps-4 fw-800 text-light font-mono" style="font-size: 0.85rem;">#${item.bookingReference}</td>
                     <td>
-                        <div class="fw-600 small text-light">${escapeHtml(item.route || 'Unknown Route')}</div>
-                        <div class="text-secondary" style="font-size: 11px;">${escapeHtml(item.cause || 'Direct Signal')}</div>
-                    </td>
-                    <td class="fw-700 text-primary">฿${(item.amount || 0).toLocaleString()}</td>
-                    <td class="text-secondary small">${escapeHtml(formatTime(item.minutesSinceDetected))}</td>
-                    <td class="text-center">${statusBadge}</td>
-                </tr>`;
-            }).join('');
-
-            // Only update DOM if content actually changed
-            if (newContent !== lastAnomaliesHtml) {
-                tbody.innerHTML = newContent;
-                lastAnomaliesHtml = newContent;
-            }
-        }
-
-        let lastHealthHtml = '';
-        async function loadHealth(isManual) {
-            const response = await fetch('/health');
-            if (!response.ok) {
-                if (redirectToLoginOnUnauthorized(response)) return;
-                return;
-            }
-            const payload = await response.json();
-            const endpoints = payload.endpoints || [];
-            
-            const list = document.getElementById('healthList');
-            const newContent = endpoints.map(e => {
-                const isDown = e.status === 'DOWN';
-                const pulseClass = isDown ? 'pulse-danger' : (e.status === 'UP' ? 'pulse-success' : 'pulse-warning');
-                const textClass = isDown ? 'text-danger' : 'text-light';
-                
-                return `
-                <div class="p-4 border-bottom border-light border-opacity-10">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <div class="fw-800 ${textClass}">${e.name}</div>
-                            <div class="text-secondary small" style="font-size: 11px;">Checked ${new Date(e.checkedAt).toLocaleTimeString()}</div>
+                        <div class="fw-700 text-light" style="font-size: 1rem;">${item.route}</div>
+                        <div class="text-info opacity-75 d-flex align-items-center gap-1" style="font-size: 0.75rem; letter-spacing: 0.02em;">
+                            <i data-lucide="sparkles" style="width: 10px; height: 10px;"></i>
+                            ${item.cause}
                         </div>
-                        <div class="status-indicator ${pulseClass}"></div>
-                    </div>
-                    <div class="d-flex gap-3 small text-secondary">
-                        <span class="d-flex align-items-center gap-1"><i data-lucide="clock" style="width:12px;"></i> ${e.responseMs || '?'}ms</span>
-                        <span class="d-flex align-items-center gap-1"><i data-lucide="gauge" style="width:12px;"></i> ${Number(e.uptime24h || 0).toFixed(1)}%</span>
-                    </div>
-                    ${isDown && e.outageAnomalyCount > 0 ? 
-                        `<button class="btn btn-link btn-sm p-0 text-danger small mt-2 fw-700" onclick="applyOutageFilter(${e.activeOutageId}, '${(e.name || '').replace(/'/g, "\\'")}')">
-                            <i data-lucide="alert-circle" style="width:14px; vertical-align:middle;"></i> View ${e.outageAnomalyCount} impact reports
-                        </button>` : ''}
-                </div>`;
-            }).join('');
+                    </td>
+                    <td class="fw-800 text-primary" style="font-size: 1.1rem;">฿${(item.amount || 0).toLocaleString()}</td>
+                    <td class="text-secondary font-mono" style="font-size: 0.85rem;">${formatTime(mins)}</td>
+                    <td class="text-center">
+                        <span class="badge ${badgeClass} border border-opacity-25 rounded-pill px-3 py-2 fw-800" style="font-size: 0.7rem;">${badgeText}</span>
+                    </td>
+                </tr>
+            `}).join('');
+        }
 
-            if (newContent !== lastHealthHtml) {
-                list.innerHTML = newContent;
-                lastHealthHtml = newContent;
+        // -- Simulation Logic --
+        async function simulatePlant() {
+            const res = await fetch('/api/simulator/plant-anomaly', { method: 'POST' });
+            const data = await res.json();
+            showToast(`SABOTAGE: Seeded booking ${data.reference}`, 'warning');
+            loadDashboard();
+        }
+
+        async function simulateOutage() {
+            if (window.simulatorLock) return;
+            
+            window.simulatorLock = true;
+            try {
+                // Optimistic UI: Feedback before the fetch finishes
+                const currentText = document.getElementById('outageText').innerText;
+                const isCurrentlyOnline = currentText.includes('Online') || currentText.includes('Syncing');
+                updateOutageUI(isCurrentlyOnline ? 'DOWN' : 'UP');
+
+                const res = await fetch('/api/simulator/toggle-outage', { method: 'POST' });
+                const data = await res.json();
+                
+                // Better status messages based on WHAT THE SERVER ACTUALLY DID
+                const msg = data.status === 'UP' ? "Network Online: System Restored" : "Network Offline: Outage Simulated";
+                showToast(msg, data.status === 'DOWN' ? 'danger' : 'success');
+                
+                // Finalize UI with server truth
+                updateOutageUI(data.status);
+            } catch (error) {
+                showToast("Connection to simulator failed.", "danger");
+                window.simulatorLock = false; // Release lock on error
+            } finally {
+                // Keep the lock for 2 seconds so auto-fetch doesn't flicker the button
+                setTimeout(() => { window.simulatorLock = false; }, 2000);
             }
         }
 
+        function updateOutageUI(status) {
+            const btn = document.getElementById('outageControlBtn');
+            const icon = document.getElementById('outageIcon');
+            const text = document.getElementById('outageText');
+            const isDown = status === "DOWN";
 
-
-        function filterAnomalies(status, e) {
-            if (e) e.preventDefault();
-            currentStatusFilter = status;
-            activeOutageFilter = null;
-            document.getElementById('outageFilterBar').classList.add('d-none');
-            setStatusFilterLabel(status);
-            loadAnomaliesForCurrentContext();
+            if (isDown) {
+                btn.className = "btn btn-danger w-100 py-3 font-mono x-small fw-900 shadow-premium transition-all animate-pulse mb-2 border-0";
+                icon.innerHTML = '<i data-lucide="zap-off" class="me-2 text-white" style="width:14px;"></i>';
+                text.innerText = "Network Offline";
+                btn.style.background = "linear-gradient(45deg, #ef4444, #991b1b)";
+            } else {
+                btn.className = "btn btn-dark w-100 py-3 font-mono x-small fw-800 border-success border-opacity-20 shadow-sm transition-all hover-glow mb-2";
+                icon.innerHTML = '<i data-lucide="check-circle" class="me-2 text-success" style="width:14px;"></i>';
+                text.innerText = "Network Online";
+                btn.style.background = "";
+            }
+            lucide.createIcons();
         }
 
-        function applyOutageFilter(id, name) {
-            activeOutageFilter = { id, name };
-            document.getElementById('outageFilterName').innerText = name;
-            document.getElementById('outageFilterBar').classList.remove('d-none');
-            loadAnomaliesForCurrentContext();
-        }
-
-        function clearOutageFilter() {
-            activeOutageFilter = null;
-            document.getElementById('outageFilterBar').classList.add('d-none');
-            loadAnomaliesForCurrentContext();
-        }
-
-
-
-        document.addEventListener('DOMContentLoaded', () => {
+        async function simulateScan() {
+            const res = await fetch('/api/simulator/trigger-scan', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, 'info');
             loadDashboard();
-            setInterval(loadDashboard, 30000);
+        }
+
+        async function simulateEmail() {
+            const email = prompt("Enter email to test alert:", "methaspak@gmail.com");
+            if (!email) return;
+            const res = await fetch(`/api/simulator/test-email?subject=TicketGuard Test&email=${encodeURIComponent(email)}`, { method: 'POST' });
+            const data = await res.json();
+            showToast(`${data.message} (${data.details})`, data.message.includes('Sent') ? 'success' : 'danger');
+        }
+
+        // -- Mode Management (Handled Globally in _Layout) --
+        window.addEventListener('guardianModeChanged', (e) => {
+            console.log('Dashboard mode changed to:', e.detail.mode);
+        });
+
+        // SINGLE Initialization point
+        let _init = false;
+        document.addEventListener('DOMContentLoaded', () => {
+            if (_init) return;
+            _init = true;
+            loadDashboard();
+            setInterval(() => loadDashboard(), 15000); 
         });
     </script>
 }

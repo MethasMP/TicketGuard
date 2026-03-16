@@ -6,7 +6,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign In - TicketGuard | BusOnlineTicket</title>
+    <title>Sign In — TicketGuard</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="~/TicketGuard.png" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
@@ -220,9 +220,8 @@
             </div>
             <h1 class="brand-title">TicketGuard</h1>
             <p class="brand-desc">
-                When payment succeeds but confirmation fails, customers are left with nothing to show for it. 
-                TicketGuard for BusOnlineTicket finds those bookings automatically, gives your team the context to act, and keeps a full record of every fix. 
-                No raw SQL. No spreadsheets. No guessing.
+                When payment succeeds but confirmation fails, customers are left with nothing to show for it.
+                TicketGuard finds those bookings automatically, gives your team the context to act, and keeps a full record of every fix.
             </p>
         </div>
 
@@ -230,7 +229,7 @@
         <div class="login-pane">
             <div class="login-content">
                 <h2 class="welcome-head">Welcome back</h2>
-                <p class="welcome-sub">Enter your credentials to access the BusOnlineTicket command center.</p>
+                <p class="welcome-sub">Sign in to access the command center.</p>
 
                 @if (ViewBag.Error != null)
                 {
@@ -241,6 +240,11 @@
                 }
 
                 <form asp-action="Login" method="post">
+                    <div id="preLoginStatus" class="mb-4 d-flex align-items-center gap-2 p-3 rounded bg-light bg-opacity-50 border border-light">
+                        <div class="status-indicator pulse-success" id="loginPulse"></div>
+                        <span class="small fw-700 text-success" id="loginStatusText">SYSTEM PROTECTED</span>
+                    </div>
+
                     <div class="mb-4">
                         <label class="form-label">Email Address</label>
                         <input type="email" name="Email" class="form-control" placeholder="name@company.com" required autofocus>
@@ -266,13 +270,44 @@
             </div>
 
             <div class="footer-note">
-                &copy; @DateTime.Now.Year TicketGuard for BusOnlineTicket. All rights reserved.
+                &copy; @DateTime.Now.Year TicketGuard. All rights reserved.
             </div>
         </div>
     </div>
 
     <script>
-        lucide.createIcons();
+        async function checkSystemPulse() {
+            try {
+                const response = await fetch('/api/heartbeat');
+                if (!response.ok) return;
+                const data = await response.json();
+                
+                const pulse = document.getElementById('loginPulse');
+                const statusText = document.getElementById('loginStatusText');
+                
+                if (data.status === 'SAFE') {
+                    pulse.className = 'status-indicator pulse-success';
+                    statusText.innerText = 'SYSTEM PROTECTED';
+                    statusText.className = 'small fw-700 text-success';
+                } else if (data.status === 'WARNING') {
+                    pulse.className = 'status-indicator pulse-warning';
+                    statusText.innerText = 'INTERVENTION ACTIVE';
+                    statusText.className = 'small fw-700 text-warning';
+                } else {
+                    pulse.className = 'status-indicator pulse-danger';
+                    statusText.innerText = 'CRITICAL ALERT';
+                    statusText.className = 'small fw-700 text-danger';
+                }
+            } catch (err) {
+                console.error('Pulse check failed:', err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            checkSystemPulse();
+            setInterval(checkSystemPulse, 10000);
+        });
     </script>
 </body>
 </html>

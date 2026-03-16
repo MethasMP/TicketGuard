@@ -51,6 +51,9 @@ namespace BookingGuardian.Models
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
 
+        [MaxLength(100)]
+        public string? CustomerEmail { get; set; }
+
         public byte PassengerCount { get; set; } = 1;
 
         public DateTime TravelDate { get; set; }
@@ -155,6 +158,8 @@ namespace BookingGuardian.Models
         public int? ResponseMs { get; set; }
 
         public int? HttpCode { get; set; }
+
+        public string? CheckDetails { get; set; }
 
         public DateTime CheckedAt { get; set; } = DateTime.UtcNow;
 

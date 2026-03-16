@@ -4,11 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - TicketGuard | BusOnlineTicket</title>
+    <title>@ViewData["Title"] — TicketGuard</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="~/TicketGuard.png" asp-append-version="true" />
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
@@ -16,6 +16,10 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
+    <!-- Startup Aurora Background -->
+    <div class="app-background"></div>
+    <div class="aurora-aura"></div>
+
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="brand-logo">
@@ -44,6 +48,13 @@
         </nav>
 
         <div style="padding: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+            <div class="mb-1">
+                <button id="globalModeToggle" onclick="toggleGlobalMode()" class="btn-mode-toggle w-100">
+                    <div class="mode-indicator" id="modeIndicator"></div>
+                    <i id="modeIcon" data-lucide="beaker" style="width: 14px; height: 14px;"></i>
+                    <span id="modeText" class="mode-label">Test Mode</span>
+                </button>
+            </div>
             <form asp-controller="Account" asp-action="Logout" method="get">
                 <button type="submit" class="nav-link logout-btn" style="background:none; border:none; width: 100%; text-align: left; color: #a1a1aa;">
                     <i data-lucide="log-out"></i>
@@ -62,6 +73,24 @@
     <!-- Focus Overlay -->
     <div id="focusOverlay" class="resolution-focus-overlay">
         <div class="focus-card" id="focusCardContent"></div>
+    </div>
+
+    <!-- Startup Toast System -->
+    <div class="toast-container position-fixed top-0 end-0 p-4" style="z-index: 3500; margin-top: 1rem;">
+        <div id="guardianToast" class="toast align-items-center text-white border-0 glass-card-heavy" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex p-3">
+                <div class="toast-body d-flex align-items-center gap-3">
+                    <div id="toastIconWrapper" class="p-2 rounded-circle" style="background: rgba(255,255,255,0.05);">
+                        <i id="toastIcon" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <span class="fw-800 x-small text-uppercase tracking-widest opacity-50 mb-1">System Message</span>
+                        <span id="toastMessage" class="fw-700"></span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
@@ -84,6 +113,55 @@
 
         lucide.createIcons();
 
+        function applyMode(mode) {
+            const btn = document.getElementById('globalModeToggle');
+            const text = document.getElementById('modeText');
+            const icon = document.getElementById('modeIcon');
+            if (!btn || !text || !icon) return;
+
+            if (mode === 'LIVE') {
+                btn.classList.add('live');
+                text.innerText = 'Live Mode';
+                icon.setAttribute('data-lucide', 'shield-check');
+                document.body.classList.add('mode-live');
+                document.body.classList.remove('mode-test');
+            } else {
+                btn.classList.remove('live');
+                text.innerText = 'Test Mode';
+                icon.setAttribute('data-lucide', 'beaker');
+                document.body.classList.add('mode-test');
+                document.body.classList.remove('mode-live');
+            }
+            
+            lucide.createIcons();
+            // Dispatch event for other scripts to listen to
+            window.dispatchEvent(new CustomEvent('guardianModeChanged', { detail: { mode } }));
+        }
+
+        async function toggleGlobalMode() {
+            const current = localStorage.getItem('guardian_mode') || 'TEST';
+            const next = current === 'LIVE' ? 'TEST' : 'LIVE';
+            
+            try {
+                // Sync with Backend
+                const res = await fetch(`/api/simulator/set-mode?mode=${next}`, { method: 'POST' });
+                const data = await res.json();
+                
+                localStorage.setItem('guardian_mode', next);
+                applyMode(next);
+                showToast(`System transitioned to ${next} Mode. Detection intervals adjusted.`, next === 'LIVE' ? 'success' : 'warning');
+            } catch (err) {
+                console.error("Failed to sync mode with server:", err);
+                showToast("System transition failed. Engine mismatch.", "danger");
+            }
+        }
+
+        // Initialize mode on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedMode = localStorage.getItem('guardian_mode') || 'TEST';
+            applyMode(savedMode);
+        });
+
         function showFocus(contentHtml) {
             const overlay = document.getElementById('focusOverlay');
             const card = document.getElementById('focusCardContent');
@@ -94,6 +172,40 @@
 
         function hideFocus() {
             document.getElementById('focusOverlay').classList.remove('visible');
+        }
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('guardianToast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastIconWrapper = document.getElementById('toastIconWrapper');
+            
+            toastMsg.innerText = message;
+            
+            // Premium palette
+            const colorMap = {
+                'success': '#10b981',
+                'danger': '#ef4444',
+                'warning': '#f59e0b',
+                'info': '#3b82f6'
+            };
+            
+            const iconMap = {
+                'success': 'shield-check',
+                'danger': 'zap-off',
+                'warning': 'alert-triangle',
+                'info': 'info'
+            };
+
+            const color = colorMap[type] || colorMap.info;
+            toastEl.style.borderLeft = `6px solid ${color}`;
+            toastIcon.setAttribute('data-lucide', iconMap[type] || 'info');
+            toastIcon.style.color = color;
+            toastIconWrapper.style.boxShadow = `0 0 15px ${color}33`; // 20% alpha
+            
+            const toast = new bootstrap.Toast(toastEl, { delay: 7000 }); // Increased delay
+            lucide.createIcons();
+            toast.show();
         }
 
         document.getElementById('focusOverlay')?.addEventListener('click', (e) => {

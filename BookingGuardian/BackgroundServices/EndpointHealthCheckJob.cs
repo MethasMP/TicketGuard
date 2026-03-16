@@ -52,12 +52,21 @@ namespace BookingGuardian.BackgroundServices
 
             foreach (var config in _endpoints)
             {
-                // To avoid redundant data from accidental double-runs or quick restarts, 
-                // check if we just recorded this endpoint less than a minute ago.
+                // Simulator Awareness: If the latest record was a "Manual Simulator Toggle", 
+                // and it's less than 5 minutes old, let the simulator stay in control.
                 var lastRecord = await dbContext.EndpointHealths
                     .Where(h => h.Name == config.Name)
                     .OrderByDescending(h => h.CheckedAt)
+                    .ThenByDescending(h => h.Id)
                     .FirstOrDefaultAsync();
+
+                if (lastRecord != null && lastRecord.CheckDetails == "Manual Simulator Toggle" && (DateTime.UtcNow - lastRecord.CheckedAt).TotalMinutes < 5)
+                {
+                    _logger.LogInformation("[DIAGNOSTIC] Skipping {Name} - Simulator toggle detected at {Time}", config.Name, lastRecord.CheckedAt);
+                    continue;
+                }
+
+                _logger.LogInformation("[DIAGNOSTIC] Checking {Name} - Last status was {Status} at {Time}", config.Name, lastRecord?.Status ?? "None", lastRecord?.CheckedAt);
 
                 if (lastRecord != null && (DateTime.UtcNow - lastRecord.CheckedAt).TotalMinutes < 1)
                 {

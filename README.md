@@ -7,31 +7,30 @@
 [![xUnit](https://img.shields.io/badge/Tests-xUnit_%2B_Moq-00B386?style=for-the-badge)](https://xunit.net/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
-> **Paid. Still pending. Operationally dangerous.**
+> **Silent Failures. Financial Risk. Operational Excellence.**
 >
-> TicketGuard watches for bookings that cleared payment but never completed, links them to system health events, and gives operators a tight recovery and reporting loop.
+> TicketGuard is a precision operational fortress designed for the "silent failure window" — the dangerous gap where a payment succeeds but the business logic fails to complete. It doesn't just monitor; it correlates, guards, and rescues.
 
-![TicketGuard dashboard preview](assets/dashboard_preview.png)
+![TicketGuard dashboard preview](assets/dashboard.png)
 
 <p align="center">
-  <strong>🔍 Detection</strong> · <strong>🛡️ Safe Recovery</strong> · <strong>📋 Auditability</strong> · <strong>📊 Operational Reporting</strong>
+  <strong>🛡️ Revenue Rescue</strong> · <strong>🔍 Forensic Correlation</strong> · <strong>🚦 Guarded Recovery</strong> · <strong>📋 Immutable Audit</strong>
 </p>
 
 ---
 
-## 🎯 Why This Project Matters for an Application Support Developer Role
+## 🎯 The SRE Perspective: Why This Project Exists
 
-This is not a CRUD app with charts.
+Most developers build for the "Happy Path." TicketGuard is built for the **"Broken Path."**
 
-It is a **.NET operations case study** built around the kind of work support developers actually do in production:
+This is an **Application Support & SRE Case Study** focused on high-stakes production scenarios:
 
-- 🚨 Monitor business-critical payment failures in near real-time
-- 🔗 Correlate stuck bookings with upstream endpoint outages
-- 🛡️ Execute guarded, auditable recovery — only when it is safe to do so
-- 📋 Leave a complete audit trail that any operator or engineer can trust
-- 📊 Generate operational reports with actionable recovery metrics
+- **🚨 Zero-Day Detection**: Identify business-critical silent failures where money has changed hands but value was not delivered.
+- **🔗 Forensic Context**: Automatically correlate data anomalies with upstream telemetry to eliminate manual log-diving.
+- **🛡️ Guarded Auto-Recovery**: An intelligent "Circuit Breaker" that inhibits automated fixes during active outages to prevent state corruption.
+- **📊 Revenue Guardrails**: Shifting metrics from "CPU usage" to "Revenue Rescued" and "Mean Time to Recovery (MTTR)."
 
-For a role like **Application Support Developer (C# .NET)**, this demonstrates the mindset gap that separates a support engineer from a generic backend developer.
+This project demonstrates the transition from a "Coder" to an "Operator" who understands that **uptime is a business requirement, not just a technical goal.**
 
 ---
 
@@ -48,20 +47,29 @@ Payment marked SUCCESS  →  Booking stays PENDING  →  Customer expects a tick
 The gap between a confirmed payment and an issued ticket is where real money and customer trust are lost.
 TicketGuard is built specifically around that gap — to detect it, explain it, and help operators close it safely.
 
+## 🎬 System in Action (Walking Through a Crisis)
+
+Below is a recorded walkthrough showing the **Chaos-to-Recovery** flow: 
+1. **Outage Simulation** via the Simulator Lab 
+2. **Safety Gate Activation** (Circuit Breaker) 
+3. **Forensic Evidence Linking** 
+4. **Autonomous Resolution** once the environment is stable.
+
+![System walkthrough](assets/walkthrough.webp)
+
 ---
 
-## ✨ Feature Overview
+---
 
-| Area | What Exists Right Now |
-|---|---|
-| 🔍 **Detection** | Background job scans for stuck bookings every N minutes |
-| 🔗 **Correlation** | Links anomalies to nearby endpoint `DOWN` events when evidence exists |
-| 🛡️ **Safety Gate** | Blocks auto-recovery when any tracked endpoint is currently `DOWN` |
-| ♻️ **Recovery** | Single and bulk recovery with transaction integrity |
-| 📋 **Audit Trail** | Every recover/ignore action writes operator, IP, user-agent, and note |
-| 📱 **SMS Follow-up** | Optional post-recovery notification attempt |
-| 📊 **Reports** | Monthly CSV download; PDF pipeline implemented but not yet exposed in UI |
-| 🔐 **Security** | JWT auth, CSP headers, anti-forgery tokens, `X-Frame-Options`, `X-Content-Type-Options` |
+| Area | Strategic Value | Status |
+|---|---|---|
+| 🔍 **Detection** | **Dual-Speed Engine**: Fast feedback (Seconds) in Test vs. Scalable stability (Minutes) in Live. | ✅ |
+| 🔗 **Correlation** | **Context Injection**: Links anomalies to specific `DOWN` events for instant root-cause analysis. | ✅ |
+| 🛡️ **Safety Gate** | **Dynamic Guard**: Blocks recovery only for active dependencies defined in current configuration. | ✅ |
+| 🧪 **Chaos Tool** | **System Simulator**: Built-in engine to inject outages and verify recovery logic under fire. | ✅ |
+| 📋 **Audit Trail** | **Immutable Ledger**: Captures operator, IP, and intent for every system mutation. | ✅ |
+| 📊 **Analytics** | **Operational Pulse**: Tracks MTTR and "Revenue at Risk" by node/route. | ✅ |
+| 🔐 **Security** | **Hardened Core**: JWT via Cookies, strict CSP, Anti-Forgery, and Secure Headers. | ✅ |
 
 ---
 
@@ -72,7 +80,7 @@ TicketGuard is built specifically around that gap — to detect it, explain it, 
 ```mermaid
 flowchart TD
     A["💳 Payment marked SUCCESS"] --> B["📦 Booking remains PENDING"]
-    B --> C["⏱️ AnomalyDetectionJob runs (every N min)"]
+    B --> C["⏱️ AnomalyDetectionJob runs\n(Seconds in TEST / Minutes in LIVE)"]
     C --> D{"🏥 Any tracked endpoint currently DOWN?"}
 
     D -->|"Yes — unsafe to auto-recover"| E["🚫 Recovery inhibited\nAnomaly created and flagged"]
@@ -198,6 +206,7 @@ erDiagram
 | Service | Role |
 |---|---|
 | `BookingService` | Single recover, ignore, bulk recover — all with transaction integrity and audit logging |
+| `SystemModeService` | Manages global system state (TEST/LIVE) and informs job timings |
 | `ReportService` | Reports page data aggregation and monthly CSV export |
 | `MonthlyPdfReportService` | Monthly PDF generation via QuestPDF |
 | `SmsNotificationService` | External HTTP-based SMS follow-up after recovery |
@@ -268,24 +277,21 @@ return await strategy.ExecuteAsync(async () =>
 
 ---
 
-## 📜 Logging Strategy
+## 📜 Logging & Observability Strategy
 
-TicketGuard uses **Serilog** with structured (key=value) log output. Every significant state transition emits a named event with contextual properties, making logs grep-able and dashboard-friendly without requiring a log aggregator in the default config.
+TicketGuard moves beyond console logs to **Structured Telemetry**. We use **Serilog** with a multi-sink configuration to ensure technical debuggability and operational auditing.
 
-### What Gets Logged
+### Persistence Layer
+- **Standard Output**: Color-coded Console logs for real-time development.
+- **MySQL Persistence**: Structured logs are written to the `app_logs` table. This allows for **SQL-based incident investigation** and historical trend analysis without external aggregators.
 
-| Event | Level | Key Properties |
-|---|---|---|
-| Stuck booking detected | `Information` | `BookingId`, `ReferenceNo`, `PaymentAt` |
-| Duplicate anomaly skipped | `Debug` | `BookingId` |
-| Outage evidence linked | `Information` | `BookingId`, `EndpointName`, `EndpointStatus` |
-| Auto-recovery inhibited (endpoint DOWN) | `Warning` | endpoint names |
-| Booking recovered | `Information` | `BookingId`, `ReferenceNo`, `RecoveredBy` |
-| Anomaly ignored | `Information` | `AnomalyId`, `IgnoredBy` |
-| Bulk recovery started / completed | `Information` | `AnomalyCount`, `RecoveredBy` |
-| SMS send attempted | `Information` / `Warning` | `BookingId`, `Attempted`, `Success` |
-| Recovery error (unexpected) | `Error` | full exception, `AnomalyId` |
-| Endpoint health poll result | `Debug` / `Warning` | `EndpointName`, `Status`, `HttpCode` |
+### Diagnostic Events
+| Event | Insight Provided |
+|---|---|
+| **Stuck Booking** | Real-time notification of commercial risk. |
+| **Circuit Breaker Trip** | Visibility into why automated recovery was inhibited. |
+| **Forensic Linkage** | Proof that a specific outage caused a specific booking failure. |
+| **Recovery Mutation** | Full accountability for system state changes. |
 
 ### Format
 
@@ -300,16 +306,27 @@ Serilog's `WriteTo.Console()` is configured in `Program.cs`. Switching to JSON o
 
 ---
 
-## 🖥️ What an Operator Sees
+## �️ Full Module Tour
 
-| Surface | URL | Purpose |
-|---|---|---|
-| **Dashboard** | `/` | Live anomaly feed, recovered value, endpoint pulse, quick-action buttons |
-| **Reports** | `/reports` | Trends, cause distribution, recovery performance, CSV export |
-| **Audit Log** | `/audit` | Full history: who acted, on what, with what note, from which IP |
-| **Health History** | `/health/history` | Endpoint stability over time, context for safety-gate decisions |
+### 1. Operations Command Center (Dashboard)
+The primary cockpit for real-time monitoring. Highlights "Revenue at Risk" and active system health.
+![Dashboard](assets/dashboard.png)
 
-![TicketGuard alternate dashboard preview](assets/dashboard_preview_bk.png)
+### 2. Forensic Analytics & Revenue Insights
+Tracking the financial impact of silent failures and component reliability trends.
+![Analytics](assets/analytics.png)
+
+### 3.📋 Immutable Audit Trail
+A complete, non-repudiable record of every manual and automated intervention.
+![Audit Log](assets/audit_logs.png)
+
+### 4. System Health Telemetry
+Live dependency monitoring with integrated Circuit Breaker logic signals.
+![Health Status](assets/health_status.png)
+
+### 5. Simulator Lab (Chaos Tooling)
+The engine used to inject outages and verify system resilience under fire.
+![Simulator](assets/simulator.png)
 
 ---
 
@@ -383,6 +400,9 @@ This starts:
 - **MySQL 8** on `localhost:3306`
 - **App container** on `http://localhost:5080`
 
+> [!TIP]
+> On the first run, MySQL may take 15–30 seconds to initialize and run the `seed.sql` script. The app container is configured to `restart: always` and will automatically reconnect once the database is ready.
+
 ### 2. Run the App Locally (without Docker for the app)
 
 ```bash
@@ -416,9 +436,11 @@ If runtime environment variables are not set, the app reads from `BookingGuardia
 
 | Key | Description | Default |
 |---|---|---|
-| `AnomalyDetection:IntervalMinutes` | How often the detection job runs | `5` |
-| `AnomalyDetection:ThresholdMinutes` | Minimum age of a stuck booking before flagging | `10` |
-| `AnomalyDetection:AutoRecoveryEnabled` | Toggle auto-recovery on/off | `false` |
+| `AnomalyDetection:IntervalSeconds` | Detection frequency in **TEST Mode** | `15` |
+| `AnomalyDetection:ThresholdSeconds` | Flagging threshold in **TEST Mode** | `30` |
+| `AnomalyDetection:IntervalMinutes` | Detection frequency in **LIVE Mode** | `5` |
+| `AnomalyDetection:ThresholdMinutes` | Flagging threshold in **LIVE Mode** | `10` |
+| `AnomalyDetection:AutoRecoveryEnabled` | Toggle auto-recovery on/off | `true` |
 | `HealthCheck:IntervalMinutes` | Endpoint polling frequency | `5` |
 | `HealthCheck:Endpoints` | Array of endpoint names + URLs to monitor | — |
 | `SmsService:Enabled` | Enable SMS follow-up after recovery | `false` |
@@ -503,10 +525,37 @@ These are the next steps I would prioritise if this project moved toward product
 | **Alerting on sustained anomaly spike** | If 20+ bookings go stuck within 10 minutes, something systemic is wrong. A threshold-based alert would catch this before a human notices on the dashboard |
 | **Integration tests against real MySQL** | EF InMemory works well for unit tests but does not validate index performance, constraint enforcement, or connection pool behaviour against the actual engine |
 
-### Deliberate Trade-offs
+---
 
-| Decision | Rationale |
-|---|---|
-| **Single-tenant, single DB** | Appropriate for the scope. Adding multi-tenancy would add row-level isolation complexity that obscures the core recovery logic without improving the portfolio signal |
-| **No event queue (Kafka/SQS)** | The detection loop is pull-based on a timer rather than push-based on payment events. Simpler, testable, and sufficient for the anomaly volume this system is designed for |
-| **EF Core over raw SQL** | The query patterns here are simple enough that ORM overhead is negligible. For a high-throughput write path this would be revisited |
+## 🧠 Strategic Architecture Decisions (ADR)
+
+### ADR 001: Dual-Speed Execution Engine
+- **Context**: In production (LIVE), high-frequency scanning puts unnecessary load on the DB. In development (TEST), waiting 10 minutes to verify a fix is unacceptable.
+- **Decision**: Implemented `ISystemModeService` to toggle global state.
+- **Impact**: TEST Mode uses **Seconds** for instant validation; LIVE Mode uses **Minutes** for resource efficiency.
+
+### ADR 002: Configuration-Bound Safety Gate
+- **Context**: Decommissioned or old health check records in the database could permanently "trip" the circuit breaker, stopping all auto-recovery.
+- **Decision**: Modified `AnomalyDetectionJob` to filter health signals against the *active* `appsettings.json` list.
+- **Impact**: System ignores "ghost" outages and only reacts to currently tracked infrastructure.
+
+### ADR 003: Deterministic Simulation
+- **Context**: You cannot wait for a real outage to test an SRE tool. 
+- **Decision**: Developed `SystemSimulatorController` to manually flip endpoint states and "plant" anomalies.
+- **Impact**: Enables repeatable Chaos Testing and "War Room" drills for support staff.
+
+---
+
+## 🧪 Simulation & Chaos Testing
+
+TicketGuard includes a built-in **Chaos Engine** (accessible via the Simulator Dashboard).
+
+1. **Inject Outage**: Force the "Payment Gateway" to return 503.
+2. **Plant Anomaly**: Create a synthetic booking that is "Stuck" (Paid but Pending).
+3. **Verify Inhibition**: Watch the `AnomalyDetectionJob` log a warning and block auto-recovery.
+4. **Restore & Recover**: Bring the gateway back `UP` and observe the system automatically rescue the booking within the next cycle.
+
+---
+
+## 🛠️ Infrastructure & Tech Stack
+... (rest of the file as before)

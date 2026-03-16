@@ -59,6 +59,16 @@ CREATE TABLE `endpoint_health` (
     `checked_at`    DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE `app_logs` (
+    `id`              INT AUTO_INCREMENT PRIMARY KEY,
+    `Timestamp`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `Level`           VARCHAR(15) NOT NULL,
+    `Message`         TEXT NOT NULL,
+    `MessageTemplate` TEXT NULL,
+    `Exception`       TEXT NULL,
+    `Properties`      JSON NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `anomalies` (
     `id`                INT AUTO_INCREMENT PRIMARY KEY,
     `booking_id`        INT  NOT NULL,

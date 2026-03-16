@@ -20,7 +20,7 @@ namespace BookingGuardian.Controllers
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> Index([FromQuery] string? action, [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> Index([FromQuery] string? action, [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             if (page < 1) page = 1;
             if (pageSize < 5) pageSize = 5;

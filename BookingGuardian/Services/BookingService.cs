@@ -45,12 +45,18 @@ namespace BookingGuardian.Services
         private readonly BookingDbContext _dbContext;
         private readonly ILogger<BookingService> _logger;
         private readonly ISmsNotificationService _smsNotificationService;
+        private readonly IEmailNotificationService _emailNotificationService;
 
-        public BookingService(BookingDbContext dbContext, ILogger<BookingService> logger, ISmsNotificationService smsNotificationService)
+        public BookingService(
+            BookingDbContext dbContext, 
+            ILogger<BookingService> logger, 
+            ISmsNotificationService smsNotificationService,
+            IEmailNotificationService emailNotificationService)
         {
             _dbContext = dbContext;
             _logger = logger;
             _smsNotificationService = smsNotificationService;
+            _emailNotificationService = emailNotificationService;
         }
 
         /// <summary>
@@ -112,7 +118,7 @@ namespace BookingGuardian.Services
                     _logger.LogInformation("Booking recovered. BookingId={BookingId} Reference={Ref} RecoveredBy={User}", 
                         anomaly.Booking.Id, anomaly.Booking.ReferenceNo, performedBy);
 
-                    await TrySendRecoverySmsAuditAsync(anomaly.Booking, performedBy, ipAddress, userAgent);
+                    await TrySendRecoveryEmailAuditAsync(anomaly.Booking, performedBy, ipAddress, userAgent);
 
                     return AnomalyResponse.Ok($"Booking {anomaly.Booking.ReferenceNo} successfully recovered.");
                 }
@@ -248,64 +254,45 @@ namespace BookingGuardian.Services
             });
         }
 
-        private async Task TrySendRecoverySmsAuditAsync(Booking booking, string performedBy, string? ipAddress, string? userAgent)
+        private async Task TrySendRecoveryEmailAuditAsync(Booking booking, string performedBy, string? ipAddress, string? userAgent)
         {
-            if (string.IsNullOrWhiteSpace(booking.PhoneNumber))
+            if (string.IsNullOrWhiteSpace(booking.CustomerEmail))
             {
                 return;
             }
 
             try
             {
-                var smsResult = await _smsNotificationService.SendRecoveryNotificationAsync(booking.PhoneNumber, booking.ReferenceNo, booking.Route);
-                if (!smsResult.Attempted)
-                {
-                    return;
-                }
+                var subject = $"TicketGuard: Booking Confirmed - {booking.ReferenceNo}";
+                var body = $@"
+                    <h3>Booking Securely Recovered</h3>
+                    <p>Dear {booking.CustomerName},</p>
+                    <p>Our Guardian system detected a minor synchronization delay with the operator. We have successfully confirmed your booking.</p>
+                    <p><strong>Reference:</strong> {booking.ReferenceNo}<br/>
+                       <strong>Route:</strong> {booking.Route}</p>
+                    <p>Travel safely.</p>
+                    <hr/>
+                    <small>TicketGuard Automated Recovery Service</small>";
 
-                var maskedPhone = MaskPhoneNumber(booking.PhoneNumber);
-                var detail = JsonSerializer.Serialize(new
-                {
-                    phone = maskedPhone,
-                    referenceNo = booking.ReferenceNo,
-                    route = booking.Route,
-                    error = smsResult.Error
-                });
-
+                var success = await _emailNotificationService.SendAlertAsync(subject, body, booking.CustomerEmail);
+                
                 await _dbContext.AuditLogs.AddAsync(new AuditLog
                 {
-                    Action = smsResult.Success ? "SMS_NOTIFICATION_SENT" : "SMS_NOTIFICATION_FAILED",
+                    Action = success ? "EMAIL_NOTIFICATION_SENT" : "EMAIL_NOTIFICATION_FAILED",
                     EntityType = "Booking",
                     EntityId = booking.Id,
                     PerformedBy = performedBy,
                     IpAddress = ipAddress,
                     UserAgent = userAgent,
-                    Note = smsResult.Success ? "Recovery SMS sent." : "Recovery SMS failed.",
-                    Detail = detail,
+                    Note = success ? $"Recovery Email sent to {booking.CustomerEmail}." : $"Recovery Email failed for {booking.CustomerEmail}.",
                     CreatedAt = DateTime.UtcNow
                 });
                 await _dbContext.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Post-recovery SMS audit write failed for booking {BookingId}", booking.Id);
+                _logger.LogError(ex, "Post-recovery Email audit write failed for booking {BookingId}", booking.Id);
             }
-        }
-
-        private static string MaskPhoneNumber(string phoneNumber)
-        {
-            var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
-            if (digits.Length >= 10)
-            {
-                return $"{digits.Substring(0, 2)}X-XXX-XX{digits.Substring(digits.Length - 2)}";
-            }
-
-            if (digits.Length >= 4)
-            {
-                return $"{digits.Substring(0, 2)}XX{digits.Substring(digits.Length - 2)}";
-            }
-
-            return "***";
         }
     }
 
