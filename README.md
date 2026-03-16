@@ -47,6 +47,16 @@ Payment marked SUCCESS  →  Booking stays PENDING  →  Customer expects a tick
 The gap between a confirmed payment and an issued ticket is where real money and customer trust are lost.
 TicketGuard is built specifically around that gap — to detect it, explain it, and help operators close it safely.
 
+## 🎬 System in Action (Walking Through a Crisis)
+
+Below is a recorded walkthrough showing the **Chaos-to-Recovery** flow: 
+1. **Outage Simulation** via the Simulator Lab 
+2. **Safety Gate Activation** (Circuit Breaker) 
+3. **Forensic Evidence Linking** 
+4. **Autonomous Resolution** once the environment is stable.
+
+![System walkthrough](assets/walkthrough.webp)
+
 ---
 
 | Area | Strategic Value | Status |
