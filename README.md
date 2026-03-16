@@ -47,18 +47,6 @@ Payment marked SUCCESS  →  Booking stays PENDING  →  Customer expects a tick
 The gap between a confirmed payment and an issued ticket is where real money and customer trust are lost.
 TicketGuard is built specifically around that gap — to detect it, explain it, and help operators close it safely.
 
-## 🎬 System in Action (Walking Through a Crisis)
-
-Below is a recorded walkthrough showing the **Chaos-to-Recovery** flow: 
-1. **Outage Simulation** via the Simulator Lab 
-2. **Safety Gate Activation** (Circuit Breaker) 
-3. **Forensic Evidence Linking** 
-4. **Autonomous Resolution** once the environment is stable.
-
-![System walkthrough](assets/walkthrough.webp)
-
----
-
 ---
 
 | Area | Strategic Value | Status |
@@ -75,7 +63,7 @@ Below is a recorded walkthrough showing the **Chaos-to-Recovery** flow:
 
 ## 🏗️ How It Works
 
-### Operator Flow
+### System Logic Flow
 
 ```mermaid
 flowchart TD
@@ -92,7 +80,7 @@ flowchart TD
     I --> J["📱 Optional SMS notification"]
     I --> K["📊 Reports & Audit views updated"]
 
-    E --> L["👤 Operator reviews dashboard\nManual recover or ignore with justification note"]
+    E --> K["📊 Reports & Audit views updated"]
 ```
 
 ---
@@ -105,13 +93,13 @@ TicketGuard does not just detect stuck bookings — it asks: *why* was the booki
 
 When `AnomalyDetectionJob` finds a stuck booking, it looks back in `EndpointHealths` for any endpoint that was `DOWN` within the relevant time window. If evidence exists, the anomaly is linked to that endpoint health record.
 
-**What this means for a support operator:**
+**Operational Impact:**
 
 | Without Correlation | With Correlation |
 |---|---|
 | "Booking REF-001 is stuck." | "Booking REF-001 stuck at 14:32. Payment Gateway was DOWN (503) from 14:28 to 14:41." |
 | Operator must manually check logs | Root-cause evidence surfaced automatically |
-| Investigation takes 10–30 minutes | Decision can be made in seconds |
+| Investigation takes 10–30 minutes | Root cause is surfaced in seconds |
 
 **The safety gate uses the same signal:**
 
@@ -218,7 +206,7 @@ erDiagram
 
 ### 1. Transaction Integrity in Bulk Recovery
 
-**Challenge:** Recovering multiple bookings in a single operator action must be all-or-nothing. A partial recovery (some bookings confirmed, others skipped) leaves the system in an inconsistent, hard-to-audit state.
+**Challenge:** Recovering multiple bookings must be all-or-nothing. A partial recovery (some bookings confirmed, others skipped) leaves the system in an inconsistent, hard-to-audit state.
 
 **Solution:** `BulkRecoverAnomaliesAsync` wraps all DB mutations inside a single `BeginTransactionAsync()` / `CommitAsync()` block. EF Core's `CreateExecutionStrategy()` ensures the strategy respects MySQL's transient fault handling. If **any** booking fails validation (e.g., `PaymentStatus != "SUCCESS"`), the entire transaction is rolled back — no confirmations, no audit logs.
 
@@ -317,7 +305,7 @@ Tracking the financial impact of silent failures and component reliability trend
 ![Analytics](assets/analytics.png)
 
 ### 3.📋 Immutable Audit Trail
-A complete, non-repudiable record of every manual and automated intervention.
+A complete, non-repudiable record of every system-led and simulated intervention.
 ![Audit Log](assets/audit_logs.png)
 
 ### 4. System Health Telemetry
