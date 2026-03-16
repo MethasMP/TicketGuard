@@ -555,5 +555,56 @@ TicketGuard includes a built-in **Chaos Engine** (accessible via the Simulator D
 
 ---
 
-## 🛠️ Infrastructure & Tech Stack
-... (rest of the file as before)
+---
+
+## � What I'd Build Next
+
+These are the next steps I would prioritise if this project moved toward production use, ranked by operational impact:
+
+### High Impact
+
+| Item | Why |
+|---|---|
+| **Expose PDF download in the reports UI** | The backend is implemented; it just needs a button and a `?format=pdf` query param wired to it |
+| **Add a `.env.example`** | Every engineer who clones this repo has to read `appsettings.json` to know what env vars are needed — a template fixes this in 5 minutes |
+| **Idempotency key on recovery actions** | Double-click on "Recover" can currently fire two requests. A per-anomaly idempotency check at the API level prevents phantom double-recoveries |
+| **Real payment gateway integration** | `PaymentGatewayService` is the riskiest simulated boundary — in production, recovery should re-verify payment status with the actual provider before confirming |
+
+### Medium Impact
+
+| Item | Why |
+|---|---|
+| **Serilog JSON sink (Seq / Datadog)** | Structured logs exist; they are just going to console. Adding `WriteTo.Seq()` or `WriteTo.Datadog()` unlocks search, alerting, and dashboards without code changes in business logic |
+| **Pagination on audit and dashboard views** | High-volume environments will accumulate thousands of anomalies. EF queries are currently unbounded |
+| **Alerting on sustained anomaly spike** | If 20+ bookings go stuck within 10 minutes, something systemic is wrong. A threshold-based alert would catch this before a human notices on the dashboard |
+| **Integration tests against real MySQL** | EF InMemory works well for unit tests but does not validate index performance, constraint enforcement, or connection pool behaviour against the actual engine |
+
+---
+
+## 🧠 Strategic Architecture Decisions (ADR)
+
+### ADR 001: Dual-Speed Execution Engine
+- **Context**: In production (LIVE), high-frequency scanning puts unnecessary load on the DB. In development (TEST), waiting 10 minutes to verify a fix is unacceptable.
+- **Decision**: Implemented `ISystemModeService` to toggle global state.
+- **Impact**: TEST Mode uses **Seconds** for instant validation; LIVE Mode uses **Minutes** for resource efficiency.
+
+### ADR 002: Configuration-Bound Safety Gate
+- **Context**: Decommissioned or old health check records in the database could permanently "trip" the circuit breaker, stopping all auto-recovery.
+- **Decision**: Modified `AnomalyDetectionJob` to filter health signals against the *active* `appsettings.json` list.
+- **Impact**: System ignores "ghost" outages and only reacts to currently tracked infrastructure.
+
+### ADR 003: Deterministic Simulation
+- **Context**: You cannot wait for a real outage to test an SRE tool. 
+- **Decision**: Developed `SystemSimulatorController` to manually flip endpoint states and "plant" anomalies.
+- **Impact**: Enables repeatable Chaos Testing and "War Room" drills for support staff.
+
+---
+
+## 🧪 Simulation & Chaos Testing
+
+TicketGuard includes a built-in **Chaos Engine** (accessible via the Simulator Dashboard).
+
+1. **Inject Outage**: Force the "Payment Gateway" to return 503.
+2. **Plant Anomaly**: Create a synthetic booking that is "Stuck" (Paid but Pending).
+3. **Verify Inhibition**: Watch the `AnomalyDetectionJob` log a warning and block auto-recovery.
+4. **Restore & Recover**: Bring the gateway back `UP` and observe the system automatically rescue the booking within the next cycle.
